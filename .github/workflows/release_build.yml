@@ -273,20 +273,17 @@ jobs:
           echo "Mengirim notifikasi rilis $TAG_NAME ke channel Telegram..."
 
           # 1. Pesan Pengumuman Rilis
+          MSG="Update Rilis Otomatis: Quran Tarteel Hifz $TAG_NAME. Build terbaru telah selesai dikompilasi untuk Android, Windows Desktop, dan macOS. File installer terlampir di bawah:"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            -d "parse_mode=Markdown" \
-            -d "text=🚀 *Update Rilis Otomatis: Qur'an Tarteel Hifz ${TAG_NAME}*
-
-Build terbaru telah selesai dikompilasi untuk Android, Windows Desktop, dan macOS. File installer terlampir di bawah:" || true
+            -d "text=${MSG}" || true
 
           # 2. Unggah seluruh installer ke Telegram channel
           find release_assets -type f \( -name "*.apk" -o -name "*.zip" -o -name "*.dmg" \) | while read -r FILE; do
             BASENAME=$(basename "$FILE")
             echo "Mengunggah $BASENAME ke Telegram..."
             curl -F "chat_id=${TELEGRAM_CHAT_ID}" \
-                 -F "caption=📦 *${BASENAME}* (Update ${TAG_NAME})" \
-                 -F "parse_mode=Markdown" \
+                 -F "caption=Installer ${BASENAME} (${TAG_NAME})" \
                  -F "document=@${FILE}" \
                  "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" || true
           done
