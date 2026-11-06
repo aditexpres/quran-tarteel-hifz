@@ -1070,7 +1070,7 @@
           sim: bestSim,
           note: `Lafal "${expectedUthmani}" sudah tepat sesuai urutan & huruf.`
         });
-      } else if (bestSim >= 0.52) {
+      } else if (bestSim >= 0.70) {
         nearCount++;
         cursor = bestIdx + 1;
         results.push({

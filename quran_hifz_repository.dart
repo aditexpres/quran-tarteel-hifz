@@ -871,7 +871,7 @@ class ArabicFuzzyMatcher {
             feedbackNote: 'Lafal tepat sesuai makhraj & huruf.',
           ),
         );
-      } else if (bestSim >= 0.52) {
+      } else if (bestSim >= 0.70) {
         nearMissCount++;
         spokenCursor = bestIdx + 1;
         items.add(
