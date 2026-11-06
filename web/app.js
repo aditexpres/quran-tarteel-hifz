@@ -33,6 +33,12 @@
       currentIndex: 0,
       score: 0,
       answered: false
+    },
+    correction: {
+      verseNumber: 1,
+      blindMode: false,
+      wordResults: [],
+      selectedWordIdx: -1
     }
   };
 
@@ -65,6 +71,29 @@
     inspectorTitle: document.getElementById('inspector-title'),
     inspectorBody: document.getElementById('inspector-body'),
     btnCloseInspector: document.getElementById('btn-close-inspector'),
+
+    // Correction Mode elements
+    corrVerseSelect: document.getElementById('corr-verse-select'),
+    btnCorrPrev: document.getElementById('btn-corr-prev'),
+    btnCorrNext: document.getElementById('btn-corr-next'),
+    btnCorrBlind: document.getElementById('btn-corr-blind'),
+    btnCorrListenQari: document.getElementById('btn-corr-listen-qari'),
+    btnCorrMic: document.getElementById('btn-corr-mic'),
+    corrMicLabel: document.getElementById('corr-mic-label'),
+    btnCorrSimPerfect: document.getElementById('btn-corr-sim-perfect'),
+    btnCorrSimMistake: document.getElementById('btn-corr-sim-mistake'),
+    corrTranscriptInput: document.getElementById('corr-transcript-input'),
+    btnCorrEvaluate: document.getElementById('btn-corr-evaluate'),
+    corrMetricAcc: document.getElementById('corr-metric-acc'),
+    corrMetricCorrect: document.getElementById('corr-metric-correct'),
+    corrMetricNear: document.getElementById('corr-metric-near'),
+    corrMetricWrong: document.getElementById('corr-metric-wrong'),
+    corrSurahHeader: document.getElementById('corr-surah-header'),
+    corrWordsFlow: document.getElementById('corr-words-flow'),
+    corrVerseTranslation: document.getElementById('corr-verse-translation'),
+    corrInspectorBadge: document.getElementById('corr-inspector-badge'),
+    corrInspectorTitle: document.getElementById('corr-inspector-title'),
+    corrInspectorBody: document.getElementById('corr-inspector-body'),
     
     // Verse detail
     detailVerseBadge: document.getElementById('detail-verse-badge'),
@@ -191,6 +220,7 @@
     setupSpeechRecognition();
     renderMushafView();
     renderMarkedMushafView();
+    renderCorrectionView();
     renderRadarMutasyabihat();
     initDrillQuestions();
   }
@@ -660,6 +690,10 @@
       if (interim) {
         DOM.transcriptDisplay.textContent = `Suara: "${interim}"`;
         evaluateVoiceSpeech(interim);
+        if (DOM.corrTranscriptInput) {
+          DOM.corrTranscriptInput.value = interim;
+          evaluateCorrectionWords(interim);
+        }
       }
     };
 
@@ -877,6 +911,264 @@
   }
 
   // =========================================================================
+  // 8B. MODE LATIHAN & KOREKSI BACAAN PER KATA (ALA TARTEEL)
+  // =========================================================================
+  function getCorrectionActiveVerse() {
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!verses.length) return null;
+    let found = verses.find(v => v.verse_number === state.correction.verseNumber);
+    if (!found) {
+      state.correction.verseNumber = verses[0].verse_number;
+      found = verses[0];
+    }
+    return found;
+  }
+
+  function renderCorrectionView() {
+    if (!DOM.corrWordsFlow) return;
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
+    if (!verses.length || !surah) return;
+
+    // Populate verse select
+    if (DOM.corrVerseSelect) {
+      DOM.corrVerseSelect.innerHTML = '';
+      verses.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.verse_number;
+        opt.textContent = `QS. ${surah.name_latin} : Ayat ${v.verse_number}`;
+        DOM.corrVerseSelect.appendChild(opt);
+      });
+      if (!verses.some(v => v.verse_number === state.correction.verseNumber)) {
+        state.correction.verseNumber = verses[0].verse_number;
+      }
+      DOM.corrVerseSelect.value = state.correction.verseNumber;
+    }
+
+    const activeVerse = getCorrectionActiveVerse();
+    if (!activeVerse) return;
+
+    if (DOM.corrSurahHeader) {
+      DOM.corrSurahHeader.textContent = `QS. ${surah.name_latin} (${surah.name_arabic}) : Ayat ${activeVerse.verse_number}`;
+    }
+    if (DOM.corrVerseTranslation) {
+      DOM.corrVerseTranslation.textContent = `"${activeVerse.translation_id}"`;
+    }
+
+    renderCorrectionWordChips(activeVerse, state.correction.wordResults);
+  }
+
+  function renderCorrectionWordChips(verse, results) {
+    if (!DOM.corrWordsFlow) return;
+    DOM.corrWordsFlow.innerHTML = '';
+
+    const words = verse.words && verse.words.length
+      ? verse.words
+      : verse.text_uthmani.split(/\s+/).map((w, i) => ({
+          position: i + 1,
+          text_uthmani: w,
+          text_clean: normalizeArabic(w),
+          translation_id: '',
+          transliteration: ''
+        }));
+
+    words.forEach((w, idx) => {
+      const res = results && results[idx] ? results[idx] : null;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      let statusClass = '';
+      let tagText = `Kata #${idx + 1}`;
+      if (res) {
+        if (res.status === 'correct') {
+          statusClass = 'status-correct';
+          tagText = '✓ Tepat';
+        } else if (res.status === 'near') {
+          statusClass = 'status-near';
+          tagText = '~ Kurang Tepat';
+        } else {
+          statusClass = 'status-wrong';
+          tagText = '✕ Salah / Terlewat';
+        }
+      }
+      const isSelected = state.correction.selectedWordIdx === idx;
+      chip.className = `corr-word-chip ${statusClass} ${isSelected ? 'selected' : ''}`;
+
+      const revealThisWord = !state.correction.blindMode || (res && res.status !== 'wrong');
+      chip.innerHTML = `
+        <span class="corr-word-arabic ${revealThisWord ? '' : 'blind'}">${w.text_uthmani}</span>
+        <span class="corr-word-tag">${tagText}</span>
+      `;
+
+      chip.addEventListener('click', () => {
+        state.correction.selectedWordIdx = idx;
+        renderCorrectionWordChips(verse, state.correction.wordResults);
+        showCorrectionWordInspector(verse, w, res, idx);
+      });
+
+      DOM.corrWordsFlow.appendChild(chip);
+    });
+  }
+
+  function evaluateCorrectionWords(spokenText) {
+    const verse = getCorrectionActiveVerse();
+    if (!verse) return;
+
+    const words = verse.words && verse.words.length
+      ? verse.words
+      : verse.text_uthmani.split(/\s+/).map((w, i) => ({
+          position: i + 1,
+          text_uthmani: w,
+          text_clean: normalizeArabic(w),
+          translation_id: '',
+          transliteration: ''
+        }));
+
+    const rawSpokenTokens = (spokenText || '').trim().split(/\s+/).filter(Boolean);
+    const cleanSpokenTokens = rawSpokenTokens.map(normalizeArabic).filter(Boolean);
+
+    let cursor = 0;
+    let correctCount = 0;
+    let nearCount = 0;
+    let wrongCount = 0;
+    const results = [];
+
+    words.forEach((w, idx) => {
+      const expectedUthmani = w.text_uthmani;
+      const expectedClean = normalizeArabic(expectedUthmani);
+
+      if (!cleanSpokenTokens.length) {
+        wrongCount++;
+        results.push({
+          idx,
+          status: 'wrong',
+          spokenWord: null,
+          sim: 0,
+          note: `Kata "${expectedUthmani}" belum terucap atau terlewat.`
+        });
+        return;
+      }
+
+      let bestIdx = -1;
+      let bestSim = 0;
+      const limit = Math.min(cleanSpokenTokens.length, cursor + 3);
+      for (let j = cursor; j < limit; j++) {
+        const sim = calculateSimilarity(expectedClean, cleanSpokenTokens[j]);
+        if (sim > bestSim) {
+          bestSim = sim;
+          bestIdx = j;
+        }
+      }
+
+      const matchedSpoken = bestIdx >= 0 && bestIdx < rawSpokenTokens.length ? rawSpokenTokens[bestIdx] : null;
+      if (bestSim >= 0.84) {
+        correctCount++;
+        cursor = bestIdx + 1;
+        results.push({
+          idx,
+          status: 'correct',
+          spokenWord: matchedSpoken,
+          sim: bestSim,
+          note: `Lafal "${expectedUthmani}" sudah tepat sesuai urutan & huruf.`
+        });
+      } else if (bestSim >= 0.52) {
+        nearCount++;
+        cursor = bestIdx + 1;
+        results.push({
+          idx,
+          status: 'near',
+          spokenWord: matchedSpoken,
+          sim: bestSim,
+          note: `Hampir tepat (terdengar "${matchedSpoken || '-'}"). Perhatikan makhraj huruf pada lafal "${expectedUthmani}".`
+        });
+      } else {
+        wrongCount++;
+        if (cursor < cleanSpokenTokens.length && bestSim > 0.25) {
+          cursor++;
+        }
+        results.push({
+          idx,
+          status: 'wrong',
+          spokenWord: matchedSpoken,
+          sim: bestSim,
+          note: matchedSpoken
+            ? `Tertukar atau salah ucap (terdengar "${matchedSpoken}"). Seharusnya membaca "${expectedUthmani}".`
+            : `Kata "${expectedUthmani}" terlewat / tidak terdengar.`
+        });
+      }
+    });
+
+    state.correction.wordResults = results;
+    const total = Math.max(1, words.length);
+    const accPct = Math.round(((correctCount + nearCount * 0.5) / total) * 100);
+
+    if (DOM.corrMetricAcc) DOM.corrMetricAcc.textContent = `Akurasi: ${accPct}%`;
+    if (DOM.corrMetricCorrect) DOM.corrMetricCorrect.textContent = `Tepat: ${correctCount} kata`;
+    if (DOM.corrMetricNear) DOM.corrMetricNear.textContent = `Perlu Perbaikan: ${nearCount} kata`;
+    if (DOM.corrMetricWrong) DOM.corrMetricWrong.textContent = `Salah / Terlewat: ${wrongCount} kata`;
+
+    // Pilih otomatis kata pertama yang salah atau kurang tepat
+    const firstIssueIdx = results.findIndex(r => r.status === 'wrong' || r.status === 'near');
+    state.correction.selectedWordIdx = firstIssueIdx >= 0 ? firstIssueIdx : 0;
+
+    renderCorrectionWordChips(verse, results);
+    const targetIdx = state.correction.selectedWordIdx;
+    if (words[targetIdx]) {
+      showCorrectionWordInspector(verse, words[targetIdx], results[targetIdx], targetIdx);
+    }
+  }
+
+  function showCorrectionWordInspector(verse, wordObj, evalRes, idx) {
+    if (!DOM.corrInspectorBody) return;
+    const statusLabel = !evalRes
+      ? 'Detail Kosakata'
+      : evalRes.status === 'correct'
+        ? '✓ Bacaan Tepat'
+        : evalRes.status === 'near'
+          ? '~ Perlu Perbaikan Makhraj'
+          : '✕ Koreksi Kata Salah / Terlewat';
+
+    if (DOM.corrInspectorBadge) DOM.corrInspectorBadge.textContent = statusLabel;
+    if (DOM.corrInspectorTitle) {
+      DOM.corrInspectorTitle.textContent = `Kata ke-${idx + 1} pada QS. ${verse.surah_name_latin}:${verse.verse_number}`;
+    }
+
+    const noteText = evalRes
+      ? evalRes.note
+      : 'Klik tombol Rekam Suara atau Simulasi di atas untuk mengevaluasi ketepatan pelafalan kata ini.';
+
+    DOM.corrInspectorBody.innerHTML = `
+      <div class="inspector-compare-grid">
+        <div class="inspector-box">
+          <div class="inspector-box-header">
+            <span>Lafal Mushaf yang Benar</span>
+            <span>Kata #${idx + 1}</span>
+          </div>
+          <div class="inspector-arabic">${wordObj.text_uthmani}</div>
+          <div class="inspector-next">Transliterasi: <strong>${wordObj.transliteration || '-'}</strong> • Arti: "${wordObj.translation_id || '-'}"</div>
+        </div>
+        <div class="inspector-box">
+          <div class="inspector-box-header">
+            <span>Hasil Simak Bacaan Anda</span>
+            <span>${evalRes ? Math.round(evalRes.sim * 100) + '% kecocokan' : 'Belum diuji'}</span>
+          </div>
+          <div class="inspector-arabic">${evalRes && evalRes.spokenWord ? evalRes.spokenWord : '—'}</div>
+          <div class="inspector-next">${noteText}</div>
+        </div>
+      </div>
+      <div class="alert-action-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-inspector-play-qari">Dengarkan Contoh Lafal Qari (QS. ${verse.surah_name_latin}:${verse.verse_number})</button>
+      </div>
+    `;
+
+    const btnPlay = document.getElementById('btn-inspector-play-qari');
+    if (btnPlay) {
+      btnPlay.addEventListener('click', () => {
+        playMurattalAudio(verse.surah_id, verse.verse_number);
+      });
+    }
+  }
+
+  // =========================================================================
   // 9. EVENT LISTENERS
   // =========================================================================
   function setupEventListeners() {
@@ -899,10 +1191,104 @@
       }
       renderMushafView();
       renderMarkedMushafView();
+      state.correction.verseNumber = 1;
+      state.correction.wordResults = [];
+      renderCorrectionView();
       if (state.activeScope === 'surah') {
         renderRadarMutasyabihat();
       }
     });
+
+    // Correction Mode Listeners
+    if (DOM.corrVerseSelect) {
+      DOM.corrVerseSelect.addEventListener('change', (e) => {
+        state.correction.verseNumber = parseInt(e.target.value, 10);
+        state.correction.wordResults = [];
+        state.correction.selectedWordIdx = -1;
+        renderCorrectionView();
+      });
+    }
+    if (DOM.btnCorrPrev) {
+      DOM.btnCorrPrev.addEventListener('click', () => {
+        if (state.correction.verseNumber > 1) {
+          state.correction.verseNumber--;
+          state.correction.wordResults = [];
+          state.correction.selectedWordIdx = -1;
+          renderCorrectionView();
+        }
+      });
+    }
+    if (DOM.btnCorrNext) {
+      DOM.btnCorrNext.addEventListener('click', () => {
+        const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+        if (state.correction.verseNumber < verses.length) {
+          state.correction.verseNumber++;
+          state.correction.wordResults = [];
+          state.correction.selectedWordIdx = -1;
+          renderCorrectionView();
+        }
+      });
+    }
+    if (DOM.btnCorrBlind) {
+      DOM.btnCorrBlind.addEventListener('click', () => {
+        state.correction.blindMode = !state.correction.blindMode;
+        DOM.btnCorrBlind.classList.toggle('active', state.correction.blindMode);
+        DOM.btnCorrBlind.textContent = state.correction.blindMode
+          ? 'Tampilkan Lafal (Mode Terbuka)'
+          : 'Sembunyikan Lafal (Uji Hafalan)';
+        renderCorrectionView();
+      });
+    }
+    if (DOM.btnCorrListenQari) {
+      DOM.btnCorrListenQari.addEventListener('click', () => {
+        const v = getCorrectionActiveVerse();
+        if (v) playMurattalAudio(v.surah_id, v.verse_number);
+      });
+    }
+    if (DOM.btnCorrMic) {
+      DOM.btnCorrMic.addEventListener('click', () => {
+        if (state.recognition) {
+          toggleListening();
+          if (DOM.corrMicLabel) {
+            DOM.corrMicLabel.textContent = state.isListening
+              ? 'Sedang Menyimak...'
+              : 'Mulai Rekam & Koreksi Suara';
+          }
+        } else {
+          // Fallback jika browser tidak mendukung Web Speech API
+          if (DOM.btnCorrSimMistake) DOM.btnCorrSimMistake.click();
+        }
+      });
+    }
+    if (DOM.btnCorrSimPerfect) {
+      DOM.btnCorrSimPerfect.addEventListener('click', () => {
+        const v = getCorrectionActiveVerse();
+        if (!v) return;
+        if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = v.text_uthmani;
+        evaluateCorrectionWords(v.text_uthmani);
+      });
+    }
+    if (DOM.btnCorrSimMistake) {
+      DOM.btnCorrSimMistake.addEventListener('click', () => {
+        const v = getCorrectionActiveVerse();
+        if (!v) return;
+        const tokens = v.text_uthmani.split(/\s+/).filter(Boolean);
+        const mutated = tokens.map((tok, i) => {
+          if (tokens.length >= 3 && i === 1) return tok.slice(0, Math.max(1, tok.length - 2)); // Kurang tepat
+          if (i === tokens.length - 1) return 'ٱلصَّاخَّةُ'; // Kata akhir tertukar
+          return tok;
+        });
+        const simulatedText = mutated.join(' ');
+        if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = simulatedText;
+        evaluateCorrectionWords(simulatedText);
+      });
+    }
+    if (DOM.btnCorrEvaluate) {
+      DOM.btnCorrEvaluate.addEventListener('click', () => {
+        const val = DOM.corrTranscriptInput ? DOM.corrTranscriptInput.value : '';
+        evaluateCorrectionWords(val);
+      });
+    }
 
     // Close Inspector
     if (DOM.btnCloseInspector) {

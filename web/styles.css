@@ -1472,6 +1472,202 @@ kbd {
 }
 
 /* ==========================================================================
+   11B. SEKSI MODE LATIHAN & KOREKSI BACAAN PER KATA (ALA TARTEEL)
+   ========================================================================== */
+.correction-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.correction-control-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.correction-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.correction-ayah-nav,
+.correction-mode-toggles,
+.correction-mic-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.correction-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.correction-input-row .search-input {
+  padding-left: 14px;
+  font-family: var(--font-arabic);
+  font-size: 1.2rem;
+}
+
+.correction-metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.corr-metric-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+.corr-metric-pill.accuracy {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.corr-metric-pill.correct {
+  background-color: #ECFDF5;
+  color: #065F46;
+  border-color: #6EE7B7;
+}
+
+.corr-metric-pill.near {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border-color: #F59E0B;
+}
+
+.corr-metric-pill.wrong {
+  background-color: #FEF2F2;
+  color: #991B1B;
+  border-color: #F87171;
+}
+
+.correction-words-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 18px 8px;
+  direction: rtl;
+}
+
+.corr-word-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-card);
+  background-color: var(--bg-surface);
+  cursor: pointer;
+  min-width: 74px;
+  min-height: 48px;
+  transition: all var(--transition-fast);
+}
+
+.corr-word-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.corr-word-chip.selected {
+  box-shadow: 0 0 0 2.5px var(--primary);
+}
+
+.corr-word-chip.status-correct {
+  background-color: #ECFDF5;
+  border-color: #34D399;
+}
+
+.corr-word-chip.status-near {
+  background-color: #FFFBEB;
+  border-color: #F59E0B;
+}
+
+.corr-word-chip.status-wrong {
+  background-color: #FEF2F2;
+  border-color: #F87171;
+}
+
+html.dark .corr-word-chip.status-correct {
+  background-color: rgba(16, 185, 129, 0.16);
+  border-color: #10B981;
+}
+
+html.dark .corr-word-chip.status-near {
+  background-color: rgba(245, 158, 11, 0.16);
+  border-color: #F59E0B;
+}
+
+html.dark .corr-word-chip.status-wrong {
+  background-color: rgba(239, 68, 68, 0.18);
+  border-color: #EF4444;
+}
+
+.corr-word-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.75rem;
+  line-height: 1.7;
+  color: var(--text-arabic);
+}
+
+.corr-word-arabic.blind {
+  filter: blur(8px);
+  user-select: none;
+}
+
+.corr-word-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  direction: ltr;
+}
+
+.status-correct .corr-word-tag {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.status-near .corr-word-tag {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.status-wrong .corr-word-tag {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.correction-verse-translation {
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
    12. UTILITAS & RESPONSIVITAS
    ========================================================================== */
 .hidden {

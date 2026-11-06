@@ -28,7 +28,8 @@ class MarkedMushafMutasyabihatView extends StatefulWidget {
 
 class _MarkedMushafMutasyabihatViewState
     extends State<MarkedMushafMutasyabihatView> {
-  int? _highlightedVerseId;
+  Verse? _selectedVerse;
+  MutasyabihatComparisonPair? _selectedPair;
 
   MutasyabihatComparisonPair? _findPairForVerse(Verse verse) {
     for (final pair in widget.pairs) {
@@ -42,237 +43,11 @@ class _MarkedMushafMutasyabihatViewState
     return null;
   }
 
-  void _inspectMutasyabihat(Verse verse, MutasyabihatComparisonPair pair) {
-    setState(() => _highlightedVerseId = verse.id);
-    final isSide1 = pair.surahId1 == verse.surahId &&
-        pair.verseNumber1 == verse.verseNumber;
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final twinSurahName = isSide1 ? pair.surahName2 : pair.surahName1;
-        final twinVerseNum = isSide1 ? pair.verseNumber2 : pair.verseNumber1;
-        final twinSurahId = isSide1 ? pair.surahId2 : pair.surahId1;
-        final twinText = isSide1 ? pair.textUthmani2 : pair.textUthmani1;
-        final twinDiff = isSide1 ? pair.diffWordPositions2 : pair.diffWordPositions1;
-        final currentDiff = isSide1 ? pair.diffWordPositions1 : pair.diffWordPositions2;
-        final nextCurrent = isSide1 ? pair.nextVerseStartWords1 : pair.nextVerseStartWords2;
-        final nextTwin = isSide1 ? pair.nextVerseStartWords2 : pair.nextVerseStartWords1;
-
-        return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.4,
-          maxChildSize: 0.85,
-          expand: false,
-          builder: (_, scrollCtrl) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: ListView(
-                controller: scrollCtrl,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF9B7A38).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFC8AA76)),
-                        ),
-                        child: const Text(
-                          'Radar Mutasyabihat',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF9B7A38),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'QS. ${verse.surahNameLatin ?? verse.surahId} : ${verse.verseNumber}  ⇄  QS. $twinSurahName : $twinVerseNum',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Kotak 1: Ayat Aktif
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF181D1A) : const Color(0xFFF8F6F0),
-                      border: Border.all(color: const Color(0xFF165B33).withOpacity(0.4)),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Ayat Yang Sedang Dibaca (${verse.surahNameLatin} : ${verse.verseNumber})',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF165B33),
-                              ),
-                            ),
-                            TextButton.icon(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              onPressed: () => widget.murattalAudioService.playVerse(
-                                surahId: verse.surahId,
-                                verseNumber: verse.verseNumber,
-                              ),
-                              icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                              label: const Text('Audio', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          verse.textUthmani,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 20,
-                            height: 2.1,
-                          ),
-                        ),
-                        const Divider(height: 16),
-                        Text(
-                          'Awal ayat kelanjutan yang benar: "$nextCurrent"',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Kotak 2: Ayat Kembaran
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF181D1A) : const Color(0xFFF8F6F0),
-                      border: Border.all(color: const Color(0xFF9B7A38).withOpacity(0.5)),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Ayat Kembaran Serupa ($twinSurahName : $twinVerseNum)',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF9B7A38),
-                              ),
-                            ),
-                            TextButton.icon(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              onPressed: () => widget.murattalAudioService.playVerse(
-                                surahId: twinSurahId,
-                                verseNumber: twinVerseNum,
-                              ),
-                              icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                              label: const Text('Audio', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          twinText,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 20,
-                            height: 2.1,
-                          ),
-                        ),
-                        const Divider(height: 16),
-                        Text(
-                          'Awal ayat kelanjutan kembarannya: "$nextTwin"',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  if (pair.userMemoryNote != null && pair.userMemoryNote!.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF9B7A38).withOpacity(0.1),
-                        border: Border.all(color: const Color(0xFF9B7A38).withOpacity(0.3)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lightbulb_outline_rounded,
-                              size: 18, color: Color(0xFF9B7A38)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Jembatan Ingatan: ${pair.userMemoryNote}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  void _selectMarkedVerse(Verse verse, MutasyabihatComparisonPair pair) {
+    setState(() {
+      _selectedVerse = verse;
+      _selectedPair = pair;
+    });
   }
 
   @override
@@ -413,86 +188,93 @@ class _MarkedMushafMutasyabihatViewState
                   const SizedBox(height: 12),
                 ],
 
-                // Teks Ayat Mengalir Kontinyu
-                SelectableText.rich(
-                  TextSpan(
+                // Teks Ayat Mengalir Kontinyu (Mendukung Hover Kursor & Klik/Sentuhan seperti di Web)
+                Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.start,
                     children: widget.verses.map((v) {
                       final pair = _findPairForVerse(v);
                       final isMarked = pair != null;
-                      final isSelected = _highlightedVerseId == v.id;
+                      final isSelected = _selectedVerse?.id == v.id;
+                      final isSide1 = pair != null &&
+                          pair.surahId1 == v.surahId &&
+                          pair.verseNumber1 == v.verseNumber;
+                      final twinLabel = pair == null
+                          ? ''
+                          : (isSide1
+                              ? '${pair.surahName2}:${pair.verseNumber2}'
+                              : '${pair.surahName1}:${pair.verseNumber1}');
 
-                      return WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: InkWell(
-                          onTap: isMarked
-                              ? () => _inspectMutasyabihat(v, pair)
-                              : null,
-                          borderRadius: BorderRadius.circular(4),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                      return MouseRegion(
+                        cursor: isMarked ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                        onEnter: isMarked ? (_) => _selectMarkedVerse(v, pair) : null,
+                        child: GestureDetector(
+                          onTap: isMarked ? () => _selectMarkedVerse(v, pair) : null,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 140),
                             padding: EdgeInsets.symmetric(
-                              horizontal: isMarked ? 4 : 1,
-                              vertical: 2,
+                              horizontal: isMarked ? 10 : 4,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? (isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+                                  ? (isDark ? const Color(0xFF3E3018) : const Color(0xFFF6E7C8))
                                   : isMarked
-                                      ? (isDark
-                                          ? const Color(0xFF262115)
-                                          : const Color(0xFFFEF8ED))
+                                      ? (isDark ? const Color(0xFF2B2418) : const Color(0xFFFBF5E8))
                                       : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
                               border: isMarked
-                                  ? Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFFF59E0B)
-                                          : const Color(0xFFC8AA76),
-                                      width: isSelected ? 1.5 : 1,
+                                  ? Border(
+                                      bottom: BorderSide(
+                                        color: const Color(0xFF9B7A38),
+                                        width: isSelected ? 2.5 : 2.0,
+                                      ),
                                     )
                                   : null,
-                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  v.textUthmani,
-                                  style: TextStyle(
-                                    fontFamily: 'Amiri',
-                                    fontSize: 21,
-                                    height: 2.2,
-                                    color: isDark
-                                        ? const Color(0xFFECE7DE)
-                                        : const Color(0xFF111815),
-                                    fontWeight: isMarked
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
+                                Flexible(
+                                  child: Text(
+                                    v.textUthmani,
+                                    style: TextStyle(
+                                      fontSize: 23,
+                                      height: 1.9,
+                                      color: isDark
+                                          ? const Color(0xFFF3F1EC)
+                                          : const Color(0xFF141816),
+                                      fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                                 if (isMarked) ...[
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 6),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF9B7A38),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: const Text(
-                                      '✦ Mirip',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
+                                    child: Text(
+                                      '⇄ $twinLabel',
+                                      textDirection: TextDirection.ltr,
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w700,
                                         color: Colors.white,
                                       ),
                                     ),
                                   ),
                                 ],
+                                const SizedBox(width: 4),
                                 Text(
-                                  ' ۝${_toArabicDigits(v.verseNumber)} ',
+                                  '۝${_toArabicDigits(v.verseNumber)}',
                                   style: const TextStyle(
-                                    fontFamily: 'Amiri',
-                                    fontSize: 16,
+                                    fontSize: 18,
                                     color: Color(0xFF9B7A38),
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -504,12 +286,274 @@ class _MarkedMushafMutasyabihatViewState
                       );
                     }).toList(),
                   ),
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          // Inspector Drawer (Persis seperti .mutasyabihat-inspector di Web)
+          _buildInlineInspectorCard(context, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInlineInspectorCard(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final subtleBg = isDark ? const Color(0xFF181D1A) : const Color(0xFFF1EDE4);
+    final borderSubtle = isDark ? const Color(0xFF262D2A) : const Color(0xFFE6E1D6);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final goldColor = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
+
+    if (_selectedVerse == null || _selectedPair == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: goldColor, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: goldColor.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: goldColor.withOpacity(0.45)),
+                  ),
+                  child: Text(
+                    'Kembaran Mutasyabihat',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: goldColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Pilih ayat bertanda di atas',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Arahkan kursor atau sentuh ayat yang memiliki tanda emas di atas untuk melihat detail perbandingan ayat mirip, kata pembeda, dan sambungan surahnya.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final verse = _selectedVerse!;
+    final pair = _selectedPair!;
+    final isSide1 = pair.surahId1 == verse.surahId &&
+        pair.verseNumber1 == verse.verseNumber;
+    final twinSurahName = isSide1 ? pair.surahName2 : pair.surahName1;
+    final twinVerseNum = isSide1 ? pair.verseNumber2 : pair.verseNumber1;
+    final twinSurahId = isSide1 ? pair.surahId2 : pair.surahId1;
+    final twinText = isSide1 ? pair.textUthmani2 : pair.textUthmani1;
+    final nextCurrent = isSide1 ? pair.nextVerseStartWords1 : pair.nextVerseStartWords2;
+    final nextTwin = isSide1 ? pair.nextVerseStartWords2 : pair.nextVerseStartWords1;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: goldColor, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: goldColor.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: goldColor.withOpacity(0.45)),
+                      ),
+                      child: Text(
+                        'Kembaran Mutasyabihat',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: goldColor,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'QS. ${verse.surahNameLatin ?? verse.surahId}:${verse.verseNumber} ⇄ QS. $twinSurahName:$twinVerseNum',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () => setState(() {
+                  _selectedVerse = null;
+                  _selectedPair = null;
+                }),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final box1 = Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: subtleBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderSubtle),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ayat Saat Ini: QS. ${verse.surahNameLatin}:${verse.verseNumber}',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => widget.murattalAudioService.playVerse(
+                            surahId: verse.surahId,
+                            verseNumber: verse.verseNumber,
+                            surahName: verse.surahNameLatin,
+                          ),
+                          child: const Text('▶ Putar', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      verse.textUthmani,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 21, height: 1.95),
+                    ),
+                    const Divider(height: 16),
+                    Text(
+                      'Awal ayat selanjutnya: $nextCurrent',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              );
+
+              final box2 = Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: subtleBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderSubtle),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Kembaran Mirip: QS. $twinSurahName:$twinVerseNum',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: goldColor,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => widget.murattalAudioService.playVerse(
+                            surahId: twinSurahId,
+                            verseNumber: twinVerseNum,
+                            surahName: twinSurahName,
+                          ),
+                          child: const Text('▶ Putar', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      twinText,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 21, height: 1.95),
+                    ),
+                    const Divider(height: 16),
+                    Text(
+                      'Awal ayat selanjutnya: $nextTwin',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              );
+
+              if (constraints.maxWidth >= 680) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: box1),
+                    const SizedBox(width: 14),
+                    Expanded(child: box2),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  box1,
+                  const SizedBox(height: 12),
+                  box2,
+                ],
+              );
+            },
+          ),
+          if (pair.userMemoryNote != null && pair.userMemoryNote!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: goldColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: goldColor.withOpacity(0.4)),
+              ),
+              child: Text(
+                'Jembatan Ingatan: ${pair.userMemoryNote}',
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ],
       ),
     );

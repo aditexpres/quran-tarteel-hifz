@@ -37,6 +37,8 @@ cp "$SCRIPT_DIR/pubspec.yaml" "$PROJECT_NAME/pubspec.yaml"
 cp "$SCRIPT_DIR/quran_hifz_repository.dart" "$PROJECT_NAME/lib/quran_hifz_repository.dart"
 cp "$SCRIPT_DIR/mushaf_15line_and_audio.dart" "$PROJECT_NAME/lib/mushaf_15line_and_audio.dart"
 cp "$SCRIPT_DIR/whisper_voice_service.dart" "$PROJECT_NAME/lib/whisper_voice_service.dart"
+cp "$SCRIPT_DIR/app_update_service.dart" "$PROJECT_NAME/lib/app_update_service.dart"
+cp "$SCRIPT_DIR/marked_mushaf_view.dart" "$PROJECT_NAME/lib/marked_mushaf_view.dart"
 cp "$SCRIPT_DIR/quran_hifz_app.dart" "$PROJECT_NAME/lib/main.dart"
 
 # Salin quran_hifz_test.dart ke folder test/ dengan penyesuaian path import `../lib/`

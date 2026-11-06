@@ -329,23 +329,25 @@ class Mushaf15LineLayoutEngine {
       return resultLines;
     }
 
-    // Distribusi kata secara merata ke dalam baris-baris Mushaf hingga tepat 15 baris (atau sesuai panjang ayat sampel)
-    final effectiveLineCount = tokenPool.length < remainingTextLines
-        ? tokenPool.length
-        : remainingTextLines;
-    final baseTokensPerLine = tokenPool.length ~/ effectiveLineCount;
-    var extraTokens = tokenPool.length % effectiveLineCount;
+    // Distribusi kata secara proporsional seperti di versi Web (minimal 4 token per baris)
+    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 4
+        ? 4
+        : (tokenPool.length / remainingTextLines).ceil();
 
     var cursor = 0;
-    for (var i = 0; i < effectiveLineCount; i++) {
-      final takeCount = baseTokensPerLine + (extraTokens > 0 ? 1 : 0);
-      if (extraTokens > 0) extraTokens--;
-
-      final slice = tokenPool.sublist(
-        cursor,
-        (cursor + takeCount).clamp(0, tokenPool.length),
-      );
-      cursor += takeCount;
+    for (var i = 0; i < remainingTextLines; i++) {
+      if (cursor >= tokenPool.length) {
+        resultLines.add(
+          MushafLineModel(
+            lineNumber: currentLineNum++,
+            tokens: const [],
+          ),
+        );
+        continue;
+      }
+      final endIdx = (cursor + wordsPerLine).clamp(0, tokenPool.length);
+      final slice = tokenPool.sublist(cursor, endIdx);
+      cursor = endIdx;
 
       resultLines.add(
         MushafLineModel(
@@ -355,8 +357,6 @@ class Mushaf15LineLayoutEngine {
       );
     }
 
-    // Jika data yang dimuat adalah sampel pendek (< 15 baris), tambahkan baris kosong berbayang
-    // agar struktur visual kertas Mushaf 15 baris tetap terjaga.
     while (resultLines.length < standardLinesPerPage) {
       resultLines.add(
         MushafLineModel(
@@ -389,6 +389,10 @@ class Mushaf15LinePageWidget extends StatelessWidget {
   final int activeVerseId;
   final int revealedWordPosition;
   final bool hideVerseMode;
+  final String? surahArabicName;
+  final String? revelationType;
+  final VoidCallback? onPrevPage;
+  final VoidCallback? onNextPage;
   final void Function(Verse verse) onSelectVerse;
   final void Function(Verse verse) onPlayVerseAudio;
   final void Function(Verse verse) onShowTafsir;
@@ -399,6 +403,10 @@ class Mushaf15LinePageWidget extends StatelessWidget {
     required this.activeVerseId,
     required this.revealedWordPosition,
     required this.hideVerseMode,
+    this.surahArabicName,
+    this.revelationType,
+    this.onPrevPage,
+    this.onNextPage,
     required this.onSelectVerse,
     required this.onPlayVerseAudio,
     required this.onShowTafsir,
@@ -406,159 +414,185 @@ class Mushaf15LinePageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pageNumber = verses.isNotEmpty ? verses.first.pageNumber : 584;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final pageBg = isDark ? const Color(0xFF1A201E) : const Color(0xFFFCFAF6);
+    final borderGold = isDark ? const Color(0xFF785E2B) : const Color(0xFFC8AA76);
+    final lineRule = isDark ? const Color(0xFF28302D) : const Color(0xFFEBE5D8);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final goldText = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
+    final arabicColor = isDark ? const Color(0xFFF3F1EC) : const Color(0xFF141816);
+    final bannerBg = isDark ? const Color(0xFF242B28) : const Color(0xFFF2ECE1);
+
+    final pageNumber = verses.isNotEmpty ? verses.first.pageNumber : 582;
     final juzNumber = verses.isNotEmpty ? verses.first.juzNumber : 30;
-    final surahTitle =
-        verses.isNotEmpty ? (verses.first.surahNameLatin ?? '') : '';
+    final surahTitle = surahArabicName != null && surahArabicName!.isNotEmpty
+        ? 'سُورَةُ $surahArabicName'
+        : (verses.isNotEmpty ? 'سُورَةُ ${verses.first.surahNameLatin ?? ''}' : '');
     final lines = Mushaf15LineLayoutEngine.build15LinesForPage(verses);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 680),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF131C2E), // Warna lembar Mushaf malam elegan
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: const Color(0xFFD97706).withOpacity(0.55), // Bingkai emas Mushaf
-              width: 2.0,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      decoration: BoxDecoration(
+        color: pageBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderGold, width: 2.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header Halaman Mushaf (persis seperti .mushaf-page-header di Web)
+          Container(
+            padding: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: borderGold, width: 1.0),
+              ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.45),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Header Atas Lembaran Mushaf (Nama Surah di Kanan, Nomor Juz di Kiri)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: const Color(0xFFD97706).withOpacity(0.35),
-                    ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(juzNumber)}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: goldText,
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Juz $juzNumber',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFFBBF24),
-                      ),
-                    ),
-                    const Text(
-                      'مصحف المدينة النبوية (١٥ سطراً)',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    ),
-                    Text(
-                      'Surah $surahTitle',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2DD4BF),
-                      ),
-                    ),
-                  ],
+                Text(
+                  surahTitle,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: primaryColor,
+                  ),
+                ),
+                Text(
+                  Mushaf15LineLayoutEngine.toArabicDigits(pageNumber),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: goldText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 15 Baris Mushaf (tanpa angka 1..15 di tepi kiri, persis seperti Web)
+          ...lines.where((l) => l.isSurahHeader || l.isBismillahLine || l.tokens.isNotEmpty).map(
+                (line) => _buildMushafLineRow(
+                  context,
+                  line,
+                  isDark: isDark,
+                  primaryColor: primaryColor,
+                  goldText: goldText,
+                  borderGold: borderGold,
+                  lineRule: lineRule,
+                  arabicColor: arabicColor,
+                  bannerBg: bannerBg,
                 ),
               ),
 
-              // Isi 15 Baris Mushaf
-              Expanded(
-                child: ListView.separated(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  itemCount: lines.length,
-                  separatorBuilder: (_, __) => Divider(
-                    height: 1,
-                    color: const Color(0xFF334155).withOpacity(0.35),
-                  ),
-                  itemBuilder: (context, index) {
-                    return _buildMushafLineRow(context, lines[index]);
-                  },
-                ),
+          // Footer Navigasi Halaman Mushaf (persis seperti .mushaf-page-footer di Web)
+          Container(
+            margin: const EdgeInsets.only(top: 14),
+            padding: const EdgeInsets.only(top: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: borderGold, width: 1.0),
               ),
-
-              // Footer Nomor Halaman Mushaf
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(16)),
-                  border: Border(
-                    top: BorderSide(
-                      color: const Color(0xFFD97706).withOpacity(0.35),
-                    ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  onPressed: onPrevPage,
+                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                  label: const Text('Sebelumnya'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
                   ),
                 ),
-                child: Center(
-                  child: Text(
-                    '— Halaman $pageNumber (${Mushaf15LineLayoutEngine.toArabicDigits(pageNumber)}) —',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFFBBF24),
-                    ),
+                Text(
+                  'Halaman $pageNumber',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
                   ),
                 ),
-              ),
-            ],
+                TextButton.icon(
+                  onPressed: onNextPage,
+                  icon: const Text('Selanjutnya'),
+                  label: const Icon(Icons.chevron_right_rounded, size: 18),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildMushafLineRow(BuildContext context, MushafLineModel line) {
-    // 1. Jika baris adalah Ornamen Kepala Surah
+  Widget _buildMushafLineRow(
+    BuildContext context,
+    MushafLineModel line, {
+    required bool isDark,
+    required Color primaryColor,
+    required Color goldText,
+    required Color borderGold,
+    required Color lineRule,
+    required Color arabicColor,
+    required Color bannerBg,
+  }) {
     if (line.isSurahHeader) {
+      final revArabic = (revelationType?.toLowerCase() == 'madaniyah') ? 'مَدَنِيَّة' : 'مَكِّيَّة';
+      final titleArabic = surahArabicName != null && surahArabicName!.isNotEmpty
+          ? 'سُورَةُ $surahArabicName • $revArabic'
+          : 'سُورَةُ ${line.headerSurahName} • $revArabic';
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF0F766E).withOpacity(0.35),
-              const Color(0xFFD97706).withOpacity(0.25),
-              const Color(0xFF0F766E).withOpacity(0.35),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFFBBF24).withOpacity(0.6)),
+          color: bannerBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderGold),
         ),
         child: Center(
           child: Text(
-            'سُورَةُ ${line.headerSurahName}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFFDE68A),
+            titleArabic,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: primaryColor,
             ),
           ),
         ),
       );
     }
 
-    // 2. Jika baris adalah Basmalah
     if (line.isBismillahLine) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 6),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
+        ),
         child: Center(
           child: Text(
             'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
@@ -566,122 +600,86 @@ class Mushaf15LinePageWidget extends StatelessWidget {
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: Color(0xFFE2E8F0),
+              color: arabicColor,
             ),
           ),
         ),
       );
     }
 
-    // 3. Baris Teks Ayat Standar (dengan nomor indikator baris 1..15 di tepi kiri)
-    return SizedBox(
-      height: 46,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            child: Text(
-              '${line.lineNumber}',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.white.withOpacity(0.25),
-              ),
-            ),
-          ),
-          Expanded(
-            child: line.tokens.isEmpty
-                ? const SizedBox.shrink()
-                : Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: line.tokens.map((token) {
-                          final isVerseActive =
-                              token.verse.id == activeVerseId;
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 50),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Wrap(
+          alignment: WrapAlignment.spaceEvenly,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
+          children: line.tokens.map((token) {
+            final isVerseActive = token.verse.id == activeVerseId;
 
-                          if (token.isVerseEndMarker) {
-                            return GestureDetector(
-                              onTap: () => onPlayVerseAudio(token.verse),
-                              onLongPress: () => onShowTafsir(token.verse),
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isVerseActive
-                                      ? const Color(0xFF0F766E)
-                                      : const Color(0xFF1E293B),
-                                  border: Border.all(
-                                    color: const Color(0xFFFBBF24),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                child: Text(
-                                  Mushaf15LineLayoutEngine.toArabicDigits(
-                                    token.verse.verseNumber,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFFDE68A),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-
-                          final word = token.word!;
-                          final isRevealed = !hideVerseMode ||
-                              !isVerseActive ||
-                              word.wordPosition <= revealedWordPosition;
-
-                          return GestureDetector(
-                            onTap: () => onSelectVerse(token.verse),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 5),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isVerseActive
-                                    ? const Color(0xFF2DD4BF).withOpacity(0.12)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: ImageFiltered(
-                                imageFilter: ImageFilter.blur(
-                                  sigmaX: isRevealed ? 0.0 : 7.5,
-                                  sigmaY: isRevealed ? 0.0 : 7.5,
-                                ),
-                                child: Text(
-                                  word.textUthmani,
-                                  style: TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: isVerseActive
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: isVerseActive
-                                        ? Colors.white
-                                        : const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+            if (token.isVerseEndMarker) {
+              return InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  onSelectVerse(token.verse);
+                  onPlayVerseAudio(token.verse);
+                },
+                onLongPress: () => onShowTafsir(token.verse),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Text(
+                    '۝${Mushaf15LineLayoutEngine.toArabicDigits(token.verse.verseNumber)}',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                      color: isVerseActive ? primaryColor : goldText,
                     ),
                   ),
-          ),
-        ],
+                ),
+              );
+            }
+
+            final word = token.word!;
+            final isRevealed = !hideVerseMode ||
+                (isVerseActive && word.wordPosition <= revealedWordPosition);
+
+            return InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => onSelectVerse(token.verse),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (isVerseActive && isRevealed && hideVerseMode)
+                      ? primaryColor.withOpacity(0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(
+                    sigmaX: isRevealed ? 0.0 : 8.0,
+                    sigmaY: isRevealed ? 0.0 : 8.0,
+                  ),
+                  child: Text(
+                    word.textUthmani,
+                    style: TextStyle(
+                      fontSize: 25,
+                      height: 1.85,
+                      fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
+                      color: isVerseActive && isRevealed ? primaryColor : arabicColor,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

@@ -149,6 +149,31 @@ void main() {
 
       expect(result, isNull);
     });
+
+    test('analyzeVerseWordMistakes mendeteksi kata tepat (Hijau) dan kata salah/tertukar (Merah) per kata', () {
+      const verse = Verse(
+        id: 3,
+        surahId: 79,
+        surahNameLatin: 'An-Nazi\'at',
+        verseNumber: 34,
+        pageNumber: 584,
+        juzNumber: 30,
+        textUthmani: 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
+        textClean: 'فاذا جاءت الطامه الكبري',
+        translationId: 'Maka apabila malapetaka besar telah datang.',
+      );
+
+      final res = ArabicFuzzyMatcher.analyzeVerseWordMistakes(
+        targetVerse: verse,
+        spokenTranscript: 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
+      );
+
+      expect(res.wordItems.length, equals(4));
+      expect(res.wordItems[0].status, equals(WordMistakeStatus.correct));
+      expect(res.wordItems[1].status, equals(WordMistakeStatus.correct));
+      expect(res.wordItems[2].status, equals(WordMistakeStatus.wrongOrSkipped));
+      expect(res.wordItems[3].status, equals(WordMistakeStatus.wrongOrSkipped));
+    });
   });
 
   // ===========================================================================

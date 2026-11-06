@@ -534,11 +534,105 @@ def build_mutasyabihat_index(
 
 def populate_offline_demo_data(master_conn: sqlite3.Connection, user_conn: sqlite3.Connection) -> None:
     """
-    Mengisi sampel data Juz 30 autentik (QS. An-Nazi'at, 'Abasa, Al-Infitar, Al-Mutaffifin, Al-Ma'un)
-    lengkap dengan kosakata perkata dan catatan Jembatan Ingatan (Memory Anchor) bawaan.
+    Mengisi data lengkap Juz 30 (37 Surah, 564 Ayat, Kosakata Perkata, dan Indeks Mutasyabihat)
+    dari bundel lokal `web/data/quran_data.json` jika tersedia, atau fallback ke sampel dasar.
     """
-    print("[Offline Demo] Mengisi data sampel autentik Juz 30 ke dalam database...")
     cur = master_conn.cursor()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    local_json_path = os.path.join(script_dir, "web", "data", "quran_data.json")
+
+    if os.path.exists(local_json_path):
+        print(f"[Offline Bundle] Memuat seluruh Juz 30 (37 Surah, 564 Ayat) dari {local_json_path}...")
+        with open(local_json_path, "r", encoding="utf-8") as f:
+            bundle = json.load(f)
+
+        surah_rows = []
+        for s in bundle.get("surahs", []):
+            surah_rows.append((
+                int(s["id"]),
+                s["name_arabic"],
+                s["name_latin"],
+                s["translation_id"],
+                int(s["total_verses"]),
+                s.get("revelation_type", "makkiyah"),
+            ))
+        cur.executemany(
+            "INSERT OR REPLACE INTO surahs VALUES (?, ?, ?, ?, ?, ?)",
+            surah_rows,
+        )
+
+        for v in bundle.get("verses", []):
+            sid = int(v["surah_id"])
+            vnum = int(v["verse_number"])
+            page = int(v["page_number"])
+            juz = int(v.get("juz_number", 30))
+            t_uth = v["text_uthmani"]
+            t_clean = remove_diacritics(t_uth)
+            trans = v.get("translation_id", "")
+            tafsir = v.get("tafsir_wajiz", "")
+
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO verses
+                (surah_id, verse_number, page_number, juz_number, text_uthmani, text_clean, translation_id, tafsir_wajiz)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (sid, vnum, page, juz, t_uth, t_clean, trans, tafsir),
+            )
+            cur.execute(
+                "SELECT id FROM verses WHERE surah_id = ? AND verse_number = ?",
+                (sid, vnum),
+            )
+            verse_id = cur.fetchone()[0]
+
+            words_list = v.get("words", [])
+            if words_list:
+                for w in words_list:
+                    pos = int(w.get("position", 1))
+                    w_uth = w.get("text_uthmani", "")
+                    w_clean = remove_diacritics(w_uth)
+                    w_trans = w.get("translation_id", "")
+                    w_tr = w.get("transliteration", "")
+                    cur.execute(
+                        """
+                        INSERT OR REPLACE INTO words
+                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (verse_id, pos, w_uth, w_clean, w_trans, w_tr),
+                    )
+            else:
+                tokens_uth = t_uth.split()
+                tokens_trans = trans.split()
+                for pos, w_uth in enumerate(tokens_uth, start=1):
+                    w_clean = remove_diacritics(w_uth)
+                    approx_trans = tokens_trans[min(pos - 1, len(tokens_trans) - 1)] if tokens_trans else ""
+                    cur.execute(
+                        """
+                        INSERT OR REPLACE INTO words
+                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (verse_id, pos, w_uth, w_clean, approx_trans, ""),
+                    )
+
+        master_conn.commit()
+        build_mutasyabihat_index(master_conn, similarity_threshold=0.72)
+
+        user_cur = user_conn.cursor()
+        user_cur.execute(
+            """
+            INSERT OR REPLACE INTO user_memory_anchors (group_id, user_note)
+            VALUES (
+                1,
+                'Rumus Urutan Mushaf: An-Nazi''at (79) pakai huruf Tha (الطَّامَّةُ), sedangkan ''Abasa (80) pakai huruf Shad (الصَّاخَّةُ).'
+            )
+            """
+        )
+        user_conn.commit()
+        return
+
+    print("[Offline Demo] Mengisi data sampel autentik Juz 30 ke dalam database...")
 
     sample_surahs = [
         (79, "النّازعات", "An-Nazi'at", "Malaikat yang Mencabut", 46, "makkiyah"),

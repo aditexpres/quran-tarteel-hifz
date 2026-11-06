@@ -1,4 +1,4 @@
-// quran_hifz_test.dart
+﻿// quran_hifz_test.dart
 // =============================================================================
 // Unit & Integration Test Suite untuk Aplikasi Qur'an Tarteel Lintas Platform
 //
@@ -34,20 +34,20 @@ void main() {
   // ===========================================================================
   group('1. ArabicFuzzyMatcher & Deteksi Trap Jump Mutasyabihat', () {
     test('normalizeArabic membersihkan harakat, tatweel, dan menyatukan varian Alif/Ya/Ta', () {
-      const rawUthmani = 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ';
+      const rawUthmani = 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°';
       final normalized = ArabicFuzzyMatcher.normalizeArabic(rawUthmani);
 
-      expect(normalized, equals('فاذا جاءت الطامه الكبري'));
+      expect(normalized, equals('ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ'));
       expect(
-        ArabicFuzzyMatcher.normalizeArabic('مَّتَاعًا لَّكُمْ وَلِأَنْعَامِكُمْ'),
-        equals('متاعا لكم ولانعامكم'),
+        ArabicFuzzyMatcher.normalizeArabic('Ù…ÙŽÙ‘ØªÙŽØ§Ø¹Ù‹Ø§ Ù„ÙŽÙ‘ÙƒÙÙ…Ù’ ÙˆÙŽÙ„ÙØ£ÙŽÙ†Ù’Ø¹ÙŽØ§Ù…ÙÙƒÙÙ…Ù’'),
+        equals('Ù…ØªØ§Ø¹Ø§ Ù„ÙƒÙ… ÙˆÙ„Ø§Ù†Ø¹Ø§Ù…ÙƒÙ…'),
       );
     });
 
     test('calculatePrefixSimilarity akurat meskipun pengguna baru mengucapkan 2 kata pertama', () {
-      const candidateClean = 'فاذا جاءت الطامه الكبري';
+      const candidateClean = 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ';
       // Simulasi transkripsi STT saat pengguna baru membaca "Fa idza jaa'atit..."
-      const partialSpoken = 'فاذا جاءت';
+      const partialSpoken = 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª';
 
       final score = ArabicFuzzyMatcher.calculatePrefixSimilarity(
         partialSpoken,
@@ -64,8 +64,8 @@ void main() {
           surahId: 79,
           surahName: 'An-Nazi\'at',
           verseNumber: 34,
-          expectedTextClean: 'فاذا جاءت الطامه الكبري',
-          textUthmani: 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
+          expectedTextClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ',
+          textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
         ),
         const DualPathCandidate(
           pathType: ListeningPathType.trapJump,
@@ -73,13 +73,13 @@ void main() {
           surahId: 80,
           surahName: '\'Abasa',
           verseNumber: 33,
-          expectedTextClean: 'فاذا جاءت الصاخه',
-          textUthmani: 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
+          expectedTextClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„ØµØ§Ø®Ù‡',
+          textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
         ),
       ];
 
       final result = ArabicFuzzyMatcher.evaluateNextVerseSpeech(
-        spokenTranscript: 'فَإِذَا جَاءَتِ الطَّامَّةُ',
+        spokenTranscript: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù',
         candidates: candidates,
       );
 
@@ -99,8 +99,8 @@ void main() {
           surahId: 79,
           surahName: 'An-Nazi\'at',
           verseNumber: 34,
-          expectedTextClean: 'فاذا جاءت الطامه الكبري',
-          textUthmani: 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
+          expectedTextClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ',
+          textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
         ),
         const DualPathCandidate(
           pathType: ListeningPathType.trapJump,
@@ -108,14 +108,14 @@ void main() {
           surahId: 80,
           surahName: '\'Abasa',
           verseNumber: 33,
-          expectedTextClean: 'فاذا جاءت الصاخه',
-          textUthmani: 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
+          expectedTextClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„ØµØ§Ø®Ù‡',
+          textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
         ),
       ];
 
       // Pengguna sedang di An-Nazi'at: 33 tetapi lidahnya terpeleset membaca lanjutan 'Abasa: 33
       final result = ArabicFuzzyMatcher.evaluateNextVerseSpeech(
-        spokenTranscript: 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
+        spokenTranscript: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
         candidates: candidates,
       );
 
@@ -136,18 +136,43 @@ void main() {
           surahId: 79,
           surahName: 'An-Nazi\'at',
           verseNumber: 34,
-          expectedTextClean: 'فاذا جاءت الطامه الكبري',
-          textUthmani: 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
+          expectedTextClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ',
+          textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
         ),
       ];
 
       final result = ArabicFuzzyMatcher.evaluateNextVerseSpeech(
-        spokenTranscript: 'قل هو الله احد',
+        spokenTranscript: 'Ù‚Ù„ Ù‡Ùˆ Ø§Ù„Ù„Ù‡ Ø§Ø­Ø¯',
         candidates: candidates,
         threshold: 0.72,
       );
 
       expect(result, isNull);
+    });
+
+    test('analyzeVerseWordMistakes mendeteksi kata tepat (Hijau) dan kata salah/tertukar (Merah) per kata', () {
+      const verse = Verse(
+        id: 3,
+        surahId: 79,
+        surahNameLatin: 'An-Nazi\'at',
+        verseNumber: 34,
+        pageNumber: 584,
+        juzNumber: 30,
+        textUthmani: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
+        textClean: 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ',
+        translationId: 'Maka apabila malapetaka besar telah datang.',
+      );
+
+      final res = ArabicFuzzyMatcher.analyzeVerseWordMistakes(
+        targetVerse: verse,
+        spokenTranscript: 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
+      );
+
+      expect(res.wordItems.length, equals(4));
+      expect(res.wordItems[0].status, equals(WordMistakeStatus.correct));
+      expect(res.wordItems[1].status, equals(WordMistakeStatus.correct));
+      expect(res.wordItems[2].status, equals(WordMistakeStatus.wrongOrSkipped));
+      expect(res.wordItems[3].status, equals(WordMistakeStatus.wrongOrSkipped));
     });
   });
 
@@ -219,7 +244,7 @@ void main() {
       // Seed data QS. An-Nazi'at (79:33-34) & QS. 'Abasa (80:32-33)
       await db.insert('surahs', {
         'id': 79,
-        'name_arabic': 'النّازعات',
+        'name_arabic': 'Ø§Ù„Ù†Ù‘Ø§Ø²Ø¹Ø§Øª',
         'name_latin': 'An-Nazi\'at',
         'translation_id': 'Malaikat yang Mencabut',
         'total_verses': 46,
@@ -227,7 +252,7 @@ void main() {
       });
       await db.insert('surahs', {
         'id': 80,
-        'name_arabic': 'عبس',
+        'name_arabic': 'Ø¹Ø¨Ø³',
         'name_latin': '\'Abasa',
         'translation_id': 'Ia Bermuka Masam',
         'total_verses': 42,
@@ -239,8 +264,8 @@ void main() {
         'verse_number': 33,
         'page_number': 584,
         'juz_number': 30,
-        'text_uthmani': 'مَتَاعًا لَّكُمْ وَلِأَنْعَامِكُمْ',
-        'text_clean': 'متاعا لكم ولانعامكم',
+        'text_uthmani': 'Ù…ÙŽØªÙŽØ§Ø¹Ù‹Ø§ Ù„ÙŽÙ‘ÙƒÙÙ…Ù’ ÙˆÙŽÙ„ÙØ£ÙŽÙ†Ù’Ø¹ÙŽØ§Ù…ÙÙƒÙÙ…Ù’',
+        'text_clean': 'Ù…ØªØ§Ø¹Ø§ Ù„ÙƒÙ… ÙˆÙ„Ø§Ù†Ø¹Ø§Ù…ÙƒÙ…',
         'translation_id': 'Untuk kesenanganmu dan hewan ternakmu.',
       });
       await db.insert('verses', {
@@ -248,8 +273,8 @@ void main() {
         'verse_number': 34,
         'page_number': 584,
         'juz_number': 30,
-        'text_uthmani': 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
-        'text_clean': 'فاذا جاءت الطامه الكبري',
+        'text_uthmani': 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
+        'text_clean': 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„Ø·Ø§Ù…Ù‡ Ø§Ù„ÙƒØ¨Ø±ÙŠ',
         'translation_id': 'Maka apabila malapetaka besar telah datang.',
       });
 
@@ -258,8 +283,8 @@ void main() {
         'verse_number': 32,
         'page_number': 585,
         'juz_number': 30,
-        'text_uthmani': 'مَّتَاعًا لَّكُمْ وَلِأَنْعَامِكُمْ',
-        'text_clean': 'متاعا لكم ولانعامكم',
+        'text_uthmani': 'Ù…ÙŽÙ‘ØªÙŽØ§Ø¹Ù‹Ø§ Ù„ÙŽÙ‘ÙƒÙÙ…Ù’ ÙˆÙŽÙ„ÙØ£ÙŽÙ†Ù’Ø¹ÙŽØ§Ù…ÙÙƒÙÙ…Ù’',
+        'text_clean': 'Ù…ØªØ§Ø¹Ø§ Ù„ÙƒÙ… ÙˆÙ„Ø§Ù†Ø¹Ø§Ù…ÙƒÙ…',
         'translation_id': 'Untuk kesenanganmu dan hewan ternakmu.',
       });
       await db.insert('verses', {
@@ -267,8 +292,8 @@ void main() {
         'verse_number': 33,
         'page_number': 585,
         'juz_number': 30,
-        'text_uthmani': 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
-        'text_clean': 'فاذا جاءت الصاخه',
+        'text_uthmani': 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
+        'text_clean': 'ÙØ§Ø°Ø§ Ø¬Ø§Ø¡Øª Ø§Ù„ØµØ§Ø®Ù‡',
         'translation_id': 'Maka apabila datang suara yang memekakkan.',
       });
 
@@ -282,13 +307,13 @@ void main() {
         'group_id': gid,
         'verse_id': v79_33,
         'diff_word_positions': '[3]',
-        'next_verse_start_words': 'فَإِذَا جَاءَتِ الطَّامَّةُ الْكُبْرَىٰ',
+        'next_verse_start_words': 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„Ø·ÙŽÙ‘Ø§Ù…ÙŽÙ‘Ø©Ù Ø§Ù„Ù’ÙƒÙØ¨Ù’Ø±ÙŽÙ‰Ù°',
       });
       await db.insert('mutasyabihat_items', {
         'group_id': gid,
         'verse_id': v80_32,
         'diff_word_positions': '[3]',
-        'next_verse_start_words': 'فَإِذَا جَاءَتِ الصَّاخَّةُ',
+        'next_verse_start_words': 'ÙÙŽØ¥ÙØ°ÙŽØ§ Ø¬ÙŽØ§Ø¡ÙŽØªÙ Ø§Ù„ØµÙŽÙ‘Ø§Ø®ÙŽÙ‘Ø©Ù',
       });
 
       await db.rawInsert('''
@@ -416,8 +441,8 @@ void main() {
           verseNumber: 1,
           pageNumber: 583,
           juzNumber: 30,
-          textUthmani: 'وَالنَّازِعَاتِ غَرْقًا',
-          textClean: 'والنازعات غرقا',
+          textUthmani: 'ÙˆÙŽØ§Ù„Ù†ÙŽÙ‘Ø§Ø²ÙØ¹ÙŽØ§ØªÙ ØºÙŽØ±Ù’Ù‚Ù‹Ø§',
+          textClean: 'ÙˆØ§Ù„Ù†Ø§Ø²Ø¹Ø§Øª ØºØ±Ù‚Ø§',
           translationId: 'Demi (malaikat) yang mencabut (nyawa) dengan keras.',
         ),
         const Verse(
@@ -427,8 +452,8 @@ void main() {
           verseNumber: 2,
           pageNumber: 583,
           juzNumber: 30,
-          textUthmani: 'وَالنَّاشِطَاتِ نَشْطًا',
-          textClean: 'والناشطات نشطا',
+          textUthmani: 'ÙˆÙŽØ§Ù„Ù†ÙŽÙ‘Ø§Ø´ÙØ·ÙŽØ§ØªÙ Ù†ÙŽØ´Ù’Ø·Ù‹Ø§',
+          textClean: 'ÙˆØ§Ù„Ù†Ø§Ø´Ø·Ø§Øª Ù†Ø´Ø·Ø§',
           translationId: 'Demi (malaikat) yang mencabut (nyawa) dengan lemah lembut.',
         ),
       ];
@@ -442,9 +467,9 @@ void main() {
     });
 
     test('toArabicDigits mengonversi nomor halaman dan ayat ke angka Arab Timur dengan benar', () {
-      expect(Mushaf15LineLayoutEngine.toArabicDigits(1), equals('١'));
-      expect(Mushaf15LineLayoutEngine.toArabicDigits(33), equals('٣٣'));
-      expect(Mushaf15LineLayoutEngine.toArabicDigits(584), equals('٥٨٤'));
+      expect(Mushaf15LineLayoutEngine.toArabicDigits(1), equals('Ù¡'));
+      expect(Mushaf15LineLayoutEngine.toArabicDigits(33), equals('Ù£Ù£'));
+      expect(Mushaf15LineLayoutEngine.toArabicDigits(584), equals('Ù¥Ù¨Ù¤'));
     });
 
     test('pcm16ToFloat32 dan buildWavHeader memproses sampel audio 16kHz secara akurat', () {

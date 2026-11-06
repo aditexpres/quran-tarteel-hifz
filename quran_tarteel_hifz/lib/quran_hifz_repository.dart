@@ -343,14 +343,21 @@ class QuranDatabaseService {
     final masterDbPath = p.join(dbDir.path, 'quran_master.db');
     final userDbPath = p.join(dbDir.path, 'user_hifz.db');
 
-    // 1. Salin aset quran_master.db jika belum ada di penyimpanan lokal perangkat
+    // 1. Salin aset quran_master.db jika belum ada atau jika ukurannya berubah (pembaruan bundel versi baru)
     final masterFile = File(masterDbPath);
-    if (!await masterFile.exists()) {
-      final byteData = await rootBundle.load('assets/db/quran_master.db');
-      final bytes = byteData.buffer.asUint8List(
-        byteData.offsetInBytes,
-        byteData.lengthInBytes,
-      );
+    final byteData = await rootBundle.load('assets/db/quran_master.db');
+    final bytes = byteData.buffer.asUint8List(
+      byteData.offsetInBytes,
+      byteData.lengthInBytes,
+    );
+    var shouldCopyMaster = !await masterFile.exists();
+    if (!shouldCopyMaster) {
+      final existingLen = await masterFile.length();
+      if (existingLen != bytes.length) {
+        shouldCopyMaster = true;
+      }
+    }
+    if (shouldCopyMaster) {
       await masterFile.writeAsBytes(bytes, flush: true);
     }
 
@@ -783,4 +790,188 @@ class ArabicFuzzyMatcher {
       warningMessage: warning,
     );
   }
+
+  /// Mengevaluasi ketepatan bacaan per kata pada satu ayat (Mode Latihan Koreksi Bacaan ala Tarteel).
+  static VerseMistakeAnalysisResult analyzeVerseWordMistakes({
+    required Verse targetVerse,
+    required String spokenTranscript,
+  }) {
+    final targetTokens = targetVerse.words.isNotEmpty
+        ? targetVerse.words.map((w) => w.textUthmani).toList()
+        : targetVerse.textUthmani.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+
+    final spokenTokensRaw = spokenTranscript
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final spokenTokensClean = spokenTokensRaw.map(normalizeArabic).where((s) => s.isNotEmpty).toList();
+
+    final items = <WordEvaluationItem>[];
+    var spokenCursor = 0;
+    var correctCount = 0;
+    var nearMissCount = 0;
+    var wrongCount = 0;
+
+    for (var i = 0; i < targetTokens.length; i++) {
+      final expectedUthmani = targetTokens[i];
+      final expectedClean = normalizeArabic(expectedUthmani);
+      final wordMeta = i < targetVerse.words.length ? targetVerse.words[i] : null;
+
+      if (spokenTokensClean.isEmpty) {
+        wrongCount++;
+        items.add(
+          WordEvaluationItem(
+            wordPosition: i + 1,
+            expectedUthmani: expectedUthmani,
+            expectedClean: expectedClean,
+            spokenWord: null,
+            similarityScore: 0.0,
+            status: WordMistakeStatus.wrongOrSkipped,
+            translationId: wordMeta?.translationId ?? '',
+            transliteration: wordMeta?.transliteration ?? '',
+            feedbackNote: 'Kata belum terucap atau terlewat.',
+          ),
+        );
+        continue;
+      }
+
+      // Cari kecocokan terbaik di sekitar kursor ucapan saat ini (window 2 kata ke depan)
+      var bestIdx = -1;
+      var bestSim = 0.0;
+      final searchLimit = math.min(spokenTokensClean.length, spokenCursor + 3);
+      for (var j = spokenCursor; j < searchLimit; j++) {
+        final cand = spokenTokensClean[j];
+        final maxLen = math.max(expectedClean.length, cand.length);
+        final sim = maxLen == 0
+            ? 1.0
+            : 1.0 - (levenshteinDistance(expectedClean, cand) / maxLen);
+        if (sim > bestSim) {
+          bestSim = sim;
+          bestIdx = j;
+        }
+      }
+
+      final matchedSpoken =
+          (bestIdx >= 0 && bestIdx < spokenTokensRaw.length) ? spokenTokensRaw[bestIdx] : null;
+
+      if (bestSim >= 0.84) {
+        correctCount++;
+        spokenCursor = bestIdx + 1;
+        items.add(
+          WordEvaluationItem(
+            wordPosition: i + 1,
+            expectedUthmani: expectedUthmani,
+            expectedClean: expectedClean,
+            spokenWord: matchedSpoken,
+            similarityScore: bestSim,
+            status: WordMistakeStatus.correct,
+            translationId: wordMeta?.translationId ?? '',
+            transliteration: wordMeta?.transliteration ?? '',
+            feedbackNote: 'Lafal tepat sesuai makhraj & huruf.',
+          ),
+        );
+      } else if (bestSim >= 0.52) {
+        nearMissCount++;
+        spokenCursor = bestIdx + 1;
+        items.add(
+          WordEvaluationItem(
+            wordPosition: i + 1,
+            expectedUthmani: expectedUthmani,
+            expectedClean: expectedClean,
+            spokenWord: matchedSpoken,
+            similarityScore: bestSim,
+            status: WordMistakeStatus.nearMiss,
+            translationId: wordMeta?.translationId ?? '',
+            transliteration: wordMeta?.transliteration ?? '',
+            feedbackNote:
+                'Hampir tepat (terdengar "${matchedSpoken ?? '-'}"), perhatikan ketepatan huruf pada lafal $expectedUthmani.',
+          ),
+        );
+      } else {
+        wrongCount++;
+        if (spokenCursor < spokenTokensClean.length && bestSim > 0.25) {
+          spokenCursor++;
+        }
+        items.add(
+          WordEvaluationItem(
+            wordPosition: i + 1,
+            expectedUthmani: expectedUthmani,
+            expectedClean: expectedClean,
+            spokenWord: matchedSpoken,
+            similarityScore: bestSim,
+            status: WordMistakeStatus.wrongOrSkipped,
+            translationId: wordMeta?.translationId ?? '',
+            transliteration: wordMeta?.transliteration ?? '',
+            feedbackNote: matchedSpoken != null
+                ? 'Tertukar/salah ucap (terdengar "$matchedSpoken"). Seharusnya: $expectedUthmani.'
+                : 'Kata ini terlewat (belum terbaca). Seharusnya: $expectedUthmani.',
+          ),
+        );
+      }
+    }
+
+    final total = targetTokens.isEmpty ? 1 : targetTokens.length;
+    final accuracy = ((correctCount + (nearMissCount * 0.5)) / total).clamp(0.0, 1.0);
+
+    return VerseMistakeAnalysisResult(
+      verse: targetVerse,
+      spokenTranscript: spokenTranscript,
+      wordItems: items,
+      accuracyScore: accuracy,
+      correctCount: correctCount,
+      nearMissCount: nearMissCount,
+      wrongCount: wrongCount,
+    );
+  }
+}
+
+enum WordMistakeStatus {
+  correct,
+  nearMiss,
+  wrongOrSkipped,
+}
+
+class WordEvaluationItem {
+  final int wordPosition;
+  final String expectedUthmani;
+  final String expectedClean;
+  final String? spokenWord;
+  final double similarityScore;
+  final WordMistakeStatus status;
+  final String translationId;
+  final String transliteration;
+  final String feedbackNote;
+
+  const WordEvaluationItem({
+    required this.wordPosition,
+    required this.expectedUthmani,
+    required this.expectedClean,
+    required this.spokenWord,
+    required this.similarityScore,
+    required this.status,
+    required this.translationId,
+    required this.transliteration,
+    required this.feedbackNote,
+  });
+}
+
+class VerseMistakeAnalysisResult {
+  final Verse verse;
+  final String spokenTranscript;
+  final List<WordEvaluationItem> wordItems;
+  final double accuracyScore;
+  final int correctCount;
+  final int nearMissCount;
+  final int wrongCount;
+
+  const VerseMistakeAnalysisResult({
+    required this.verse,
+    required this.spokenTranscript,
+    required this.wordItems,
+    required this.accuracyScore,
+    required this.correctCount,
+    required this.nearMissCount,
+    required this.wrongCount,
+  });
 }

@@ -90,6 +90,15 @@
         </svg>
         <span>Mushaf Bertanda</span>
       </button>
+      <button class="tab-btn" data-tab="correction" id="tab-correction-btn">
+        <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+        <span>Koreksi Bacaan</span>
+      </button>
       <button class="tab-btn" data-tab="radar" id="tab-radar-btn">
         <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"></circle>
@@ -289,6 +298,95 @@
           </div>
           <div class="inspector-body" id="inspector-body">
             <p class="inspector-placeholder">Arahkan kursor atau sentuh ayat yang memiliki tanda emas di atas untuk melihat detail perbandingan ayat mirip, kata pembeda, dan sambungan surahnya.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKSI 2B: MODE LATIHAN & KOREKSI BACAAN PER KATA (ALA TARTEEL) -->
+    <section id="section-correction" class="tab-section">
+      <div class="correction-wrapper">
+        <div class="marked-info-banner">
+          <div class="banner-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+            </svg>
+          </div>
+          <div>
+            <h3>Mode Latihan & Koreksi Bacaan Per Kata (Tasmi' & Tashih)</h3>
+            <p>Uji ketepatan bacaan ayat demi ayat. Setiap kata dianalisis secara otomatis: <strong>Hijau (Tepat)</strong>, <strong>Kuning (Kurang Tepat/Mirip)</strong>, dan <strong>Merah (Salah Ucap/Terlewat)</strong> disertai koreksi audio Qari.</p>
+          </div>
+        </div>
+
+        <!-- Panel Kontrol Pilihan Ayat & Mikrofon Koreksi -->
+        <div class="correction-control-card">
+          <div class="correction-top-bar">
+            <div class="correction-ayah-nav">
+              <button id="btn-corr-prev" class="btn btn-secondary btn-sm" title="Ayat Sebelumnya">◄ Ayat Sebelumnya</button>
+              <label for="corr-verse-select" class="sr-only">Pilih Ayat</label>
+              <select id="corr-verse-select" class="select-dropdown sm" aria-label="Pilih Nomor Ayat"></select>
+              <button id="btn-corr-next" class="btn btn-secondary btn-sm" title="Ayat Selanjutnya">Ayat Selanjutnya ►</button>
+            </div>
+            <div class="correction-mode-toggles">
+              <button id="btn-corr-blind" class="btn btn-secondary btn-sm" aria-pressed="false">
+                <span>Sembunyikan Lafal (Uji Hafalan)</span>
+              </button>
+              <button id="btn-corr-listen-qari" class="btn btn-primary btn-sm">
+                <span>Dengarkan Contoh Qari</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="correction-mic-bar">
+            <button id="btn-corr-mic" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              </svg>
+              <span id="corr-mic-label">Mulai Rekam & Koreksi Suara</span>
+            </button>
+            <button id="btn-corr-sim-perfect" class="btn btn-secondary btn-sm">Simulasi Bacaan Tepat (100%)</button>
+            <button id="btn-corr-sim-mistake" class="btn btn-secondary btn-sm">Simulasi Ada Kata Salah / Terlewat</button>
+          </div>
+
+          <div class="correction-input-row">
+            <input type="text" id="corr-transcript-input" class="search-input" dir="rtl" placeholder="Transkripsi suara Arab Anda akan muncul di sini (atau ketik/ubah untuk menguji koreksi per kata)..." aria-label="Transkripsi bacaan Arab">
+            <button id="btn-corr-evaluate" class="btn btn-primary btn-sm">Evaluasi Per Kata</button>
+          </div>
+
+          <!-- Ringkasan Skor Akurasi -->
+          <div class="correction-metrics-row" id="corr-metrics-row">
+            <span class="corr-metric-pill accuracy" id="corr-metric-acc">Akurasi: —</span>
+            <span class="corr-metric-pill correct" id="corr-metric-correct">Tepat: 0 kata</span>
+            <span class="corr-metric-pill near" id="corr-metric-near">Perlu Perbaikan: 0 kata</span>
+            <span class="corr-metric-pill wrong" id="corr-metric-wrong">Salah / Terlewat: 0 kata</span>
+          </div>
+        </div>
+
+        <!-- Lembaran Mushaf Evaluasi Per Kata -->
+        <article class="mushaf-page-card correction-mushaf-card">
+          <header class="mushaf-page-header">
+            <span id="corr-surah-header">QS. An-Naba' : Ayat 1</span>
+            <span>Klik pada kata berwarna merah/kuning untuk melihat detail koreksi & mendengar Qari</span>
+          </header>
+          <div class="correction-words-flow" id="corr-words-flow" dir="rtl">
+            <!-- Kata per kata dirender via JS -->
+          </div>
+          <p class="correction-verse-translation" id="corr-verse-translation"></p>
+        </article>
+
+        <!-- Kartu Detail Koreksi Kata Terpilih -->
+        <div class="mutasyabihat-inspector" id="corr-word-inspector">
+          <div class="inspector-header">
+            <div class="inspector-title-row">
+              <span class="inspector-badge" id="corr-inspector-badge">Analisis Kata</span>
+              <strong id="corr-inspector-title">Sentuh atau klik salah satu kata di atas untuk melihat detail makhraj & lafal</strong>
+            </div>
+          </div>
+          <div class="inspector-body" id="corr-inspector-body">
+            <p class="inspector-placeholder">Setelah Anda membaca ayat atau menekan tombol simulasi, kata yang kurang tepat akan ditandai warna merah atau kuning. Klik kata tersebut untuk mendengarkan pelafalan Qari yang benar.</p>
           </div>
         </div>
       </div>
