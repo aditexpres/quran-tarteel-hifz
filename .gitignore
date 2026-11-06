@@ -1,0 +1,12 @@
+# Flutter / Dart / Native Build
+.dart_tool/
+.packages
+build/
+native_whisper_build/
+*.iml
+*.ipr
+*.iws
+.idea/
+.DS_Store
+__pycache__/
+*.pyc

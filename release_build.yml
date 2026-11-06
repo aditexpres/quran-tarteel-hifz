@@ -1,0 +1,271 @@
+# .github/workflows/release_build.yml
+# ==============================================================================
+# Pipeline CI/CD Lintas Platform Otomatis untuk Aplikasi Qur'an Tarteel Hifz
+#
+# Tahapan Pipeline:
+# 1. prepare-db-and-test : Build SQLite `quran_master.db` & jalankan `flutter test`.
+# 2. build-android       : Kompilasi NDK `libwhisper.so` + build APK Android (`arm64-v8a` & `x86_64`).
+# 3. build-windows       : Kompilasi MSVC `whisper.dll` + build EXE Windows x64 Portable (.zip).
+# 4. build-macos         : Kompilasi Metal `libwhisper.dylib` + build bundel `.dmg` macOS Universal.
+# 5. github-release      : Unggah otomatis APK, ZIP Windows, & DMG macOS ke halaman GitHub Releases
+#                          setiap kali tag versi dibuat (contoh: `git tag v1.0.0 && git push --tags`).
+# ==============================================================================
+
+name: Quran Tarteel Hifz — CI & Multi-Platform Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      build_full_30_juz_db:
+        description: 'Unduh 30 Juz penuh (114 Surah) dari Quran.com API v4'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  PROJECT_DIR: 'quran_tarteel_hifz'
+
+jobs:
+  # ============================================================================
+  # JOB 1: GENERATE DATABASE SQLITE & JALANKAN UNIT TEST OTOMATIS
+  # ============================================================================
+  prepare-db-and-test:
+    name: 1. Generate Database & Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install SQLite3 Native Library (untuk sqflite_common_ffi di Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-0 libsqlite3-dev
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Jalankan Setup Proyek Flutter & Unit Test
+        run: |
+          chmod +x setup_flutter_project.sh
+          bash setup_flutter_project.sh
+
+          # Jika trigger adalah rilis tag (v*) atau input manual meminta 30 Juz penuh,
+          # perbarui quran_master.db dengan 114 Surah penuh
+          if [[ "${{ github.ref }}" == refs/tags/v* ]] || [[ "${{ inputs.build_full_30_juz_db }}" == "true" ]]; then
+            echo "Mengunduh database 30 Juz penuh (114 Surah) dari Quran.com API v4..."
+            python3 build_quran_db.py --all \
+              --master-out "${{ env.PROJECT_DIR }}/assets/db/quran_master.db" \
+              --user-out "${{ env.PROJECT_DIR }}/assets/db/user_hifz.db"
+          fi
+
+          cd "${{ env.PROJECT_DIR }}"
+          flutter pub get
+          flutter test test/quran_hifz_test.dart
+
+      - name: Unggah Aset Database `quran_master.db` untuk Job Build OS Lainnya
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-master-db
+          path: ${{ env.PROJECT_DIR }}/assets/db/quran_master.db
+          retention-days: 7
+
+  # ============================================================================
+  # JOB 2: BUILD ANDROID APK (DENGAN KOMPILASI NDK `libwhisper.so`)
+  # ============================================================================
+  build-android:
+    name: 2. Build Android APK (arm64-v8a & x86_64)
+    needs: prepare-db-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Siapkan Struktur Proyek & Unduh Database Artifact
+        run: |
+          chmod +x setup_flutter_project.sh build_whisper_native.sh
+          bash setup_flutter_project.sh
+
+      - name: Ambil `quran_master.db` dari Job Pertama
+        uses: actions/download-artifact@v4
+        with:
+          name: quran-master-db
+          path: ${{ env.PROJECT_DIR }}/assets/db/
+
+      - name: Kompilasi Native `libwhisper.so` via Android NDK
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/$(ls -1 ${ANDROID_HOME}/ndk | sort -V | tail -n 1)"
+          echo "Menggunakan ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
+          bash build_whisper_native.sh android
+
+      - name: Build Release APK (Split per ABI)
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          flutter pub get
+          flutter build apk --release --split-per-abi
+
+      - name: Unggah Artifact APK Android
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuranTarteelHifz-Android-APKs
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
+
+  # ============================================================================
+  # JOB 3: BUILD WINDOWS DESKTOP EXE (DENGAN KOMPILASI `whisper.dll`)
+  # ============================================================================
+  build-windows:
+    name: 3. Build Windows Desktop (x64 EXE + whisper.dll)
+    needs: prepare-db-and-test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK (Windows)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Siapkan Proyek & Kompilasi `whisper.dll`
+        shell: bash
+        run: |
+          flutter config --enable-windows-desktop
+          chmod +x setup_flutter_project.sh build_whisper_native.sh
+          bash setup_flutter_project.sh
+          bash build_whisper_native.sh windows
+
+      - name: Ambil `quran_master.db` dari Job Pertama
+        uses: actions/download-artifact@v4
+        with:
+          name: quran-master-db
+          path: ${{ env.PROJECT_DIR }}/assets/db/
+
+      - name: Build Windows Release & Paketkan ZIP Portable
+        shell: bash
+        run: |
+          cd "${{ env.PROJECT_DIR }}"
+          flutter pub get
+          flutter build windows --release
+
+          RELEASE_DIR="build/windows/x64/runner/Release"
+          if [ -f "windows/runner/whisper.dll" ]; then
+            cp "windows/runner/whisper.dll" "$RELEASE_DIR/whisper.dll"
+          fi
+
+          7z a -tzip "../QuranTarteelHifz-Windows-x64.zip" "./$RELEASE_DIR/*"
+
+      - name: Unggah Artifact Windows Portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuranTarteelHifz-Windows-x64
+          path: QuranTarteelHifz-Windows-x64.zip
+
+  # ============================================================================
+  # JOB 4: BUILD MACOS UNIVERSAL DMG (DENGAN KOMPILASI METAL `libwhisper.dylib`)
+  # ============================================================================
+  build-macos:
+    name: 4. Build macOS Universal DMG (Apple Silicon + Intel)
+    needs: prepare-db-and-test
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK (macOS)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Siapkan Proyek & Kompilasi Universal `libwhisper.dylib` (Metal GPU)
+        run: |
+          flutter config --enable-macos-desktop
+          chmod +x setup_flutter_project.sh build_whisper_native.sh
+          bash setup_flutter_project.sh
+          bash build_whisper_native.sh macos
+
+      - name: Ambil `quran_master.db` dari Job Pertama
+        uses: actions/download-artifact@v4
+        with:
+          name: quran-master-db
+          path: ${{ env.PROJECT_DIR }}/assets/db/
+
+      - name: Build macOS Release & Buat Installer `.dmg`
+        run: |
+          cd "${{ env.PROJECT_DIR }}"
+          flutter pub get
+          flutter build macos --release
+
+          APP_BUNDLE=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
+          if [ -f "macos/Runner/libwhisper.dylib" ]; then
+            mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+            cp "macos/Runner/libwhisper.dylib" "$APP_BUNDLE/Contents/Frameworks/libwhisper.dylib"
+          fi
+
+          hdiutil create \
+            -volname "Quran Tarteel Hifz" \
+            -srcfolder "$APP_BUNDLE" \
+            -ov -format UDZO \
+            "../QuranTarteelHifz-macOS-Universal.dmg"
+
+      - name: Unggah Artifact macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuranTarteelHifz-macOS-DMG
+          path: QuranTarteelHifz-macOS-Universal.dmg
+
+  # ============================================================================
+  # JOB 5: PUBLIKASI OTOMATIS KE GITHUB RELEASES (SAAT GIT TAG v*.*.* DIBUAT)
+  # ============================================================================
+  publish-release:
+    name: 5. Publish GitHub Release
+    needs: [ build-android, build-windows, build-macos ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Unduh Seluruh Artifact Build (APK, ZIP Windows, & DMG macOS)
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+
+      - name: Buat GitHub Release & Lampirkan File Installer
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release_assets/**/*.apk
+            release_assets/**/*.zip
+            release_assets/**/*.dmg
