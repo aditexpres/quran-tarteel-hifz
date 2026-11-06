@@ -261,11 +261,14 @@ jobs:
             release_assets/**/*.dmg
 
       - name: Kirim Otomatis ke Channel Telegram (program storage)
-        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Secrets TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum disetel, lewati pengiriman..."
+            exit 0
+          fi
           TAG_NAME="${{ github.ref_name }}"
           echo "Mengirim notifikasi rilis $TAG_NAME ke channel Telegram..."
 

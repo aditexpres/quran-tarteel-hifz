@@ -54,6 +54,17 @@
     pageIndicator: document.getElementById('page-indicator'),
     btnPrevPage: document.getElementById('btn-prev-page'),
     btnNextPage: document.getElementById('btn-next-page'),
+
+    // Marked Mushaf elements
+    markedJuzLabel: document.getElementById('marked-juz-label'),
+    markedSurahLabel: document.getElementById('marked-surah-label'),
+    markedPageLabel: document.getElementById('marked-page-label'),
+    markedBismillahBar: document.getElementById('marked-bismillah-bar'),
+    markedVersesFlow: document.getElementById('marked-verses-flow'),
+    mutasyabihatInspector: document.getElementById('mutasyabihat-inspector'),
+    inspectorTitle: document.getElementById('inspector-title'),
+    inspectorBody: document.getElementById('inspector-body'),
+    btnCloseInspector: document.getElementById('btn-close-inspector'),
     
     // Verse detail
     detailVerseBadge: document.getElementById('detail-verse-badge'),
@@ -179,6 +190,7 @@
     setupEventListeners();
     setupSpeechRecognition();
     renderMushafView();
+    renderMarkedMushafView();
     renderRadarMutasyabihat();
     initDrillQuestions();
   }
@@ -361,6 +373,130 @@
       first.classList.add('revealed');
       first.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+  }
+
+  // =========================================================================
+  // 4B. MODE MUSHAF BERTANDA MUTASYABIHAT (FULL MUSHAF DENGAN SOROT AYAT MIRIP)
+  // =========================================================================
+  function renderMarkedMushafView() {
+    if (!DOM.markedVersesFlow) return;
+
+    const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
+    if (!surah) return;
+
+    if (DOM.markedSurahLabel) DOM.markedSurahLabel.textContent = `سُورَةُ ${surah.name_arabic}`;
+    if (DOM.markedPageLabel) DOM.markedPageLabel.textContent = toArabicDigits(state.activePageNumber);
+    if (DOM.markedJuzLabel) DOM.markedJuzLabel.textContent = `الجزء ${toArabicDigits(30)}`;
+
+    if (DOM.markedBismillahBar) {
+      DOM.markedBismillahBar.style.display = surah.id === 9 ? 'none' : 'block';
+    }
+
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!verses.length) return;
+
+    DOM.markedVersesFlow.innerHTML = '';
+
+    verses.forEach(v => {
+      // Cari apakah ayat ini memiliki kembaran mutasyabihat
+      const pair = (state.data.mutasyabihat || []).find(p => 
+        (p.surah_id_1 === v.surah_id && p.verse_num_1 === v.verse_number) ||
+        (p.surah_id_2 === v.surah_id && p.verse_num_2 === v.verse_number)
+      );
+
+      const segment = document.createElement('span');
+      segment.className = 'verse-segment';
+      segment.dataset.verseId = v.id;
+      segment.dataset.verseNumber = v.verse_number;
+
+      if (pair) {
+        segment.classList.add('has-mutasyabihat');
+        const isSide1 = pair.surah_id_1 === v.surah_id && pair.verse_num_1 === v.verse_number;
+        const diffPositions = isSide1 ? pair.diff_1 : pair.diff_2;
+        
+        segment.innerHTML = `${highlightDiffWords(v.text_uthmani, diffPositions)} <span class="twin-badge">✦ Mirip</span><span class="ayah-end-marker"> ۝${toArabicDigits(v.verse_number)} </span>`;
+
+        // Interaksi Hover & Click / Touch untuk menyorot
+        segment.addEventListener('mouseenter', () => {
+          highlightAndInspectVerse(segment, pair, isSide1, v);
+        });
+
+        segment.addEventListener('click', () => {
+          highlightAndInspectVerse(segment, pair, isSide1, v);
+          if (DOM.mutasyabihatInspector) {
+            DOM.mutasyabihatInspector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+      } else {
+        segment.innerHTML = `${v.text_uthmani} <span class="ayah-end-marker"> ۝${toArabicDigits(v.verse_number)} </span>`;
+      }
+
+      DOM.markedVersesFlow.appendChild(segment);
+    });
+  }
+
+  function highlightAndInspectVerse(segmentEl, pair, isSide1, currentVerse) {
+    if (!DOM.inspectorTitle || !DOM.inspectorBody) return;
+
+    document.querySelectorAll('.verse-segment.active-highlight').forEach(el => el.classList.remove('active-highlight'));
+    segmentEl.classList.add('active-highlight');
+
+    const twinSurahName = isSide1 ? pair.surah_name_2 : pair.surah_name_1;
+    const twinVerseNum = isSide1 ? pair.verse_num_2 : pair.verse_num_1;
+    const twinSurahId = isSide1 ? pair.surah_id_2 : pair.surah_id_1;
+    const twinText = isSide1 ? pair.text_2 : pair.text_1;
+    const twinDiff = isSide1 ? pair.diff_2 : pair.diff_1;
+    const currentDiff = isSide1 ? pair.diff_1 : pair.diff_2;
+    const nextCurrent = isSide1 ? pair.next_words_1 : pair.next_words_2;
+    const nextTwin = isSide1 ? pair.next_words_2 : pair.next_words_1;
+
+    DOM.inspectorTitle.textContent = `QS. ${currentVerse.surah_name_latin} : ${currentVerse.verse_number} ⇄ QS. ${twinSurahName} : ${twinVerseNum}`;
+
+    const savedAnchor = localStorage.getItem(`memory_anchor_${pair.group_id}`) || '';
+
+    DOM.inspectorBody.innerHTML = `
+      <div class="inspector-compare-grid">
+        <div class="inspector-box">
+          <div class="inspector-box-header">
+            <span>Ayat Aktif: QS. ${currentVerse.surah_name_latin} : ${currentVerse.verse_number}</span>
+            <button class="btn btn-ghost btn-xs btn-inspect-audio" data-surah="${currentVerse.surah_id}" data-verse="${currentVerse.verse_number}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Putar Audio</span>
+            </button>
+          </div>
+          <div class="inspector-arabic">${highlightDiffWords(currentVerse.text_uthmani, currentDiff)}</div>
+          <div class="inspector-next">
+            Lanjutan ayat yang benar: <strong>${nextCurrent || '...'}</strong>
+          </div>
+        </div>
+
+        <div class="inspector-box">
+          <div class="inspector-box-header">
+            <span>Kembaran Serupa: QS. ${twinSurahName} : ${twinVerseNum}</span>
+            <button class="btn btn-ghost btn-xs btn-inspect-audio" data-surah="${twinSurahId}" data-verse="${twinVerseNum}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Putar Audio</span>
+            </button>
+          </div>
+          <div class="inspector-arabic">${highlightDiffWords(twinText, twinDiff)}</div>
+          <div class="inspector-next">
+            Lanjutan ayat kembarannya: <strong>${nextTwin || '...'}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-anchor">
+        <strong>Jembatan Ingatan (Anti-Tertukar):</strong> ${savedAnchor || 'Belum ada catatan rumus. Tambahkan rumus catatan di menu Radar Mutasyabihat.'}
+      </div>
+    `;
+
+    DOM.inspectorBody.querySelectorAll('.btn-inspect-audio').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const s = parseInt(e.currentTarget.dataset.surah, 10);
+        const v = parseInt(e.currentTarget.dataset.verse, 10);
+        playMurattalAudio(s, v);
+      });
+    });
   }
 
   // =========================================================================
@@ -762,10 +898,22 @@
         state.activePageNumber = firstVerse.page_number;
       }
       renderMushafView();
+      renderMarkedMushafView();
       if (state.activeScope === 'surah') {
         renderRadarMutasyabihat();
       }
     });
+
+    // Close Inspector
+    if (DOM.btnCloseInspector) {
+      DOM.btnCloseInspector.addEventListener('click', () => {
+        document.querySelectorAll('.verse-segment.active-highlight').forEach(el => el.classList.remove('active-highlight'));
+        if (DOM.inspectorTitle) DOM.inspectorTitle.textContent = 'Pilih ayat bertanda di atas';
+        if (DOM.inspectorBody) {
+          DOM.inspectorBody.innerHTML = '<p class="inspector-placeholder">Arahkan kursor atau sentuh ayat yang memiliki tanda emas di atas untuk melihat detail perbandingan ayat mirip, kata pembeda, dan sambungan surahnya.</p>';
+        }
+      });
+    }
 
     // Hide/Peek Mode Toggle
     DOM.btnHideMode.addEventListener('click', () => {

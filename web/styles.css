@@ -1258,7 +1258,221 @@ kbd {
 }
 
 /* ==========================================================================
-   11. UTILITAS & RESPONSIVITAS
+   11. SEKSI MUSHAF BERTANDA MUTASYABIHAT (MODE BACA PENUH DENGAN SOROT)
+   ========================================================================== */
+.marked-mushaf-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.marked-info-banner {
+  background-color: var(--accent-gold-subtle);
+  border: 1px solid var(--accent-gold-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.marked-info-banner .banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--accent-gold-border);
+  color: var(--accent-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.marked-info-banner h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.marked-info-banner p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.marked-page-card {
+  padding: 24px 28px;
+}
+
+.marked-bismillah-bar {
+  text-align: center;
+  font-family: var(--font-arabic);
+  font-size: 1.55rem;
+  color: var(--text-arabic);
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+.marked-verses-flow {
+  font-family: var(--font-arabic);
+  font-size: 1.6rem;
+  line-height: 2.6;
+  color: var(--text-arabic);
+  text-align: justify;
+}
+
+.verse-segment {
+  display: inline;
+  padding: 0 2px;
+  transition: all var(--transition-fast);
+}
+
+/* Ayat yang memiliki kembaran mutasyabihat */
+.verse-segment.has-mutasyabihat {
+  background-color: var(--accent-gold-subtle);
+  border-bottom: 2.5px solid var(--accent-gold);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 0 2px;
+  cursor: pointer;
+}
+
+.verse-segment.has-mutasyabihat:hover,
+.verse-segment.has-mutasyabihat.active-highlight {
+  background-color: var(--diff-bg);
+  outline: 2px solid var(--diff-border);
+  outline-offset: 1px;
+  color: var(--diff-text);
+}
+
+.twin-badge {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+  background-color: var(--accent-gold);
+  color: #FFFFFF;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-right: 4px;
+  margin-left: 2px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Drawer Inspektor Mutasyabihat */
+.mutasyabihat-inspector {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--accent-gold);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all var(--transition-normal);
+}
+
+.inspector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
+}
+
+.inspector-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inspector-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: var(--accent-gold-subtle);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.inspector-title-row strong {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.inspector-placeholder {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.inspector-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .inspector-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inspector-box {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspector-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.inspector-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.4rem;
+  line-height: 2.1;
+  color: var(--text-arabic);
+  direction: rtl;
+  text-align: right;
+}
+
+.inspector-next {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+
+.inspector-anchor {
+  background-color: var(--accent-gold-subtle);
+  border: 1px solid var(--accent-gold-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   12. UTILITAS & RESPONSIVITAS
    ========================================================================== */
 .hidden {
   display: none !important;

@@ -11,6 +11,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_update_service.dart';
+import 'marked_mushaf_view.dart';
 import 'mushaf_15line_and_audio.dart';
 import 'quran_hifz_repository.dart';
 import 'whisper_voice_service.dart';
@@ -110,6 +112,9 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
     );
     _voiceController.modelDownloadManager.checkExistingModel();
     _loadInitialData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService.checkUpdateSilently(context);
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -229,19 +234,24 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
                     setState(() => _selectedNavIndex = idx),
                 destinations: const [
                   NavigationDestination(
-                    icon: Icon(Icons.mic_none_rounded),
-                    selectedIcon: Icon(Icons.mic_rounded),
-                    label: 'Mushaf & Voice Hifz',
+                    icon: Icon(Icons.menu_book_outlined),
+                    selectedIcon: Icon(Icons.menu_book_rounded),
+                    label: 'Mushaf 15 Baris',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.auto_awesome_outlined),
+                    selectedIcon: Icon(Icons.auto_awesome_rounded),
+                    label: 'Mushaf Bertanda',
                   ),
                   NavigationDestination(
                     icon: Icon(Icons.radar_outlined),
                     selectedIcon: Icon(Icons.radar_rounded),
-                    label: 'Radar Mutasyabihat',
+                    label: 'Radar',
                   ),
                   NavigationDestination(
                     icon: Icon(Icons.quiz_outlined),
                     selectedIcon: Icon(Icons.quiz_rounded),
-                    label: 'Drill Sambung Ayat',
+                    label: 'Drill',
                   ),
                 ],
               ),
@@ -313,8 +323,14 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
         ),
         const SizedBox(width: 8),
         IconButton(
-          tooltip: 'Pengaturan Model AI Whisper & Mikrofon (Opsi 2)',
-          icon: const Icon(Icons.downloading_rounded, color: Color(0xFF2DD4BF)),
+          tooltip: 'Periksa Pembaruan Aplikasi',
+          icon: const Icon(Icons.system_update_rounded),
+          onPressed: () => AppUpdateService.manualCheck(context),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: 'Pengaturan Model AI Whisper & Mikrofon',
+          icon: const Icon(Icons.downloading_rounded),
           onPressed: _showWhisperModelManagerDialog,
         ),
         const SizedBox(width: 12),
@@ -326,7 +342,6 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
     return Row(
       children: [
         NavigationRail(
-          backgroundColor: const Color(0xFF0F172A),
           selectedIndex: _selectedNavIndex,
           onDestinationSelected: (idx) =>
               setState(() => _selectedNavIndex = idx),
@@ -335,7 +350,12 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
             NavigationRailDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book_rounded),
-              label: Text('Split Mushaf'),
+              label: Text('15 Baris'),
+            ),
+            NavigationRailDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome_rounded),
+              label: Text('Bertanda'),
             ),
             NavigationRailDestination(
               icon: Icon(Icons.radar_outlined),
@@ -349,25 +369,31 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
             ),
           ],
         ),
-        const VerticalDivider(width: 1, color: Color(0xFF1E293B)),
+        const VerticalDivider(width: 1),
         Expanded(
           flex: 6,
-          child: _selectedNavIndex == 2
+          child: _selectedNavIndex == 3
               ? MutasyabihatDrillView(
                   repository: _repository,
                   juzNumber: _selectedJuz,
                 )
-              : MushafVoiceHifzView(
-                  verses: _verses,
-                  voiceController: _voiceController,
-                  murattalAudioService: _murattalAudioService,
-                  hideVerseMode: _hideVerseMode,
-                  showWordByWord: _showWordByWord,
-                  isMushaf15LineMode: _isMushaf15LineMode,
-                  onShowTafsir: _showTafsirBottomSheet,
-                ),
+              : _selectedNavIndex == 1
+                  ? MarkedMushafMutasyabihatView(
+                      verses: _verses,
+                      pairs: _mutasyabihatPairs,
+                      murattalAudioService: _murattalAudioService,
+                    )
+                  : MushafVoiceHifzView(
+                      verses: _verses,
+                      voiceController: _voiceController,
+                      murattalAudioService: _murattalAudioService,
+                      hideVerseMode: _hideVerseMode,
+                      showWordByWord: _showWordByWord,
+                      isMushaf15LineMode: _isMushaf15LineMode,
+                      onShowTafsir: _showTafsirBottomSheet,
+                    ),
         ),
-        const VerticalDivider(width: 1, color: Color(0xFF1E293B)),
+        const VerticalDivider(width: 1),
         Expanded(
           flex: 5,
           child: MutasyabihatRadarView(
@@ -402,6 +428,12 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
           onShowTafsir: _showTafsirBottomSheet,
         );
       case 1:
+        return MarkedMushafMutasyabihatView(
+          verses: _verses,
+          pairs: _mutasyabihatPairs,
+          murattalAudioService: _murattalAudioService,
+        );
+      case 2:
         return MutasyabihatRadarView(
           pairs: _mutasyabihatPairs,
           selectedScope: _selectedScope,
@@ -416,7 +448,7 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
             await _refreshMutasyabihatRadar();
           },
         );
-      case 2:
+      case 3:
       default:
         return MutasyabihatDrillView(
           repository: _repository,

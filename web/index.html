@@ -84,6 +84,12 @@
         </svg>
         <span>Mushaf 15 Baris</span>
       </button>
+      <button class="tab-btn" data-tab="marked-mushaf" id="tab-marked-mushaf-btn">
+        <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>Mushaf Bertanda</span>
+      </button>
       <button class="tab-btn" data-tab="radar" id="tab-radar-btn">
         <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"></circle>
@@ -239,7 +245,56 @@
       </div>
     </section>
 
-    <!-- SEKSI 2: RADAR MUTASYABIHAT -->
+    <!-- SEKSI 2: MUSHAF BERTANDA MUTASYABIHAT (MODE BACA PENUH DENGAN SOROT AYAT MIRIP) -->
+    <section id="section-marked-mushaf" class="tab-section">
+      <div class="marked-mushaf-wrapper">
+        <div class="marked-info-banner">
+          <div class="banner-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </div>
+          <div>
+            <h3>Mode Mushaf Bertanda Mutasyabihat</h3>
+            <p>Membaca seluruh Al-Qur'an secara penuh. Ayat yang memiliki kembaran ditandai khusus — <strong>arahkan kursor atau sentuh</strong> untuk menyorot dan langsung melihat surah serta ayat kembarannya.</p>
+          </div>
+        </div>
+
+        <!-- Lembaran Mushaf Penuh Bertanda -->
+        <article class="mushaf-page-card marked-page-card">
+          <header class="mushaf-page-header">
+            <span class="juz-label" id="marked-juz-label">الجزء ٣٠</span>
+            <span class="surah-label" id="marked-surah-label">سُورَةُ النَّبَإِ</span>
+            <span class="page-label" id="marked-page-label">٥٨٢</span>
+          </header>
+
+          <div class="marked-bismillah-bar" id="marked-bismillah-bar">
+            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+          </div>
+
+          <!-- Alur Teks Ayat Kontinyu dengan Penanda Khusus -->
+          <div class="marked-verses-flow" id="marked-verses-flow" dir="rtl">
+            <!-- Disusun secara dinamis oleh JavaScript -->
+          </div>
+        </article>
+
+        <!-- Inspector Drawer: Muncul saat ayat mutasyabihat dihover atau disentuh -->
+        <div class="mutasyabihat-inspector" id="mutasyabihat-inspector">
+          <div class="inspector-header">
+            <div class="inspector-title-row">
+              <span class="inspector-badge">Kembaran Mutasyabihat</span>
+              <strong id="inspector-title">Pilih ayat bertanda di atas</strong>
+            </div>
+            <button id="btn-close-inspector" class="btn btn-ghost btn-xs" aria-label="Tutup Inspektor">✕</button>
+          </div>
+          <div class="inspector-body" id="inspector-body">
+            <p class="inspector-placeholder">Arahkan kursor atau sentuh ayat yang memiliki tanda emas di atas untuk melihat detail perbandingan ayat mirip, kata pembeda, dan sambungan surahnya.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEKSI 3: RADAR MUTASYABIHAT -->
     <section id="section-radar" class="tab-section">
       <div class="radar-container">
         <div class="radar-header-card">
