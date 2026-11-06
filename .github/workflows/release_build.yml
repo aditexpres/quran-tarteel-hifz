@@ -178,9 +178,7 @@ jobs:
           flutter build windows --release
 
           RELEASE_DIR="build/windows/x64/runner/Release"
-          if [ -f "windows/runner/whisper.dll" ]; then
-            cp "windows/runner/whisper.dll" "$RELEASE_DIR/whisper.dll"
-          fi
+          cp windows/runner/*.dll "$RELEASE_DIR/" 2>/dev/null || true
 
           7z a -tzip "../QuranTarteelHifz-Windows-x64.zip" "./$RELEASE_DIR/*"
 
@@ -228,10 +226,8 @@ jobs:
           flutter build macos --release
 
           APP_BUNDLE=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
-          if [ -f "macos/Runner/libwhisper.dylib" ]; then
-            mkdir -p "$APP_BUNDLE/Contents/Frameworks"
-            cp "macos/Runner/libwhisper.dylib" "$APP_BUNDLE/Contents/Frameworks/libwhisper.dylib"
-          fi
+          mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+          cp macos/Runner/*.dylib "$APP_BUNDLE/Contents/Frameworks/" 2>/dev/null || true
 
           hdiutil create \
             -volname "Quran Tarteel Hifz" \

@@ -161,6 +161,11 @@ def init_databases(master_path: str, user_path: str) -> Tuple[sqlite3.Connection
     os.makedirs(os.path.dirname(os.path.abspath(master_path)), exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(user_path)), exist_ok=True)
 
+    if os.path.exists(master_path):
+        os.remove(master_path)
+    if os.path.exists(user_path):
+        os.remove(user_path)
+
     master_conn = sqlite3.connect(master_path)
     user_conn = sqlite3.connect(user_path)
 

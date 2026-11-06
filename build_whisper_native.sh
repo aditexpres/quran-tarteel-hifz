@@ -34,14 +34,12 @@ prepare_whisper_repo() {
 
   cp "$SCRIPT_DIR/whisper_flutter_bridge.cpp" "$WHISPER_CPP_DIR/whisper_flutter_bridge.cpp"
 
-  # Tambahkan target shared library `whisper_bridge` ke CMakeLists.txt jika belum ada
+  # Sertakan whisper_flutter_bridge.cpp langsung ke target library `whisper`
   if ! grep -q "whisper_flutter_bridge.cpp" "$WHISPER_CPP_DIR/CMakeLists.txt"; then
     cat >> "$WHISPER_CPP_DIR/CMakeLists.txt" << 'EOF'
 
-# --- Target Shared Library untuk Flutter Dart FFI ---
-add_library(whisper_flutter SHARED whisper_flutter_bridge.cpp)
-target_link_libraries(whisper_flutter PRIVATE whisper)
-set_target_properties(whisper_flutter PROPERTIES OUTPUT_NAME "whisper")
+# --- Sertakan Jembatan C-ABI untuk Flutter Dart FFI ---
+target_sources(whisper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/whisper_flutter_bridge.cpp")
 EOF
   fi
 }
@@ -73,8 +71,8 @@ build_android() {
     cmake --build "$ABI_BUILD_DIR" --config Release -j
 
     mkdir -p "$JNI_LIBS_DIR/$ABI"
-    find "$ABI_BUILD_DIR" -name "libwhisper.so" -exec cp {} "$JNI_LIBS_DIR/$ABI/libwhisper.so" \;
-    echo "  -> Tersimpan di: $JNI_LIBS_DIR/$ABI/libwhisper.so"
+    find "$ABI_BUILD_DIR" -name "*.so" -exec cp {} "$JNI_LIBS_DIR/$ABI/" \;
+    echo "  -> Tersimpan di: $JNI_LIBS_DIR/$ABI/"
   done
   echo "[3/3] Kompilasi Android selesai!"
 }
@@ -97,8 +95,8 @@ build_macos() {
 
   MACOS_OUT_DIR="$FLUTTER_PROJECT_DIR/macos/Runner"
   mkdir -p "$MACOS_OUT_DIR"
-  find "$MACOS_BUILD_DIR" -name "libwhisper.dylib" -exec cp {} "$MACOS_OUT_DIR/libwhisper.dylib" \;
-  echo "[3/3] Selesai! Tersimpan di: $MACOS_OUT_DIR/libwhisper.dylib"
+  find "$MACOS_BUILD_DIR" -name "*.dylib" -exec cp {} "$MACOS_OUT_DIR/" \;
+  echo "[3/3] Selesai! Tersimpan di: $MACOS_OUT_DIR/"
 }
 
 # 4. Kompilasi untuk Windows (whisper.dll x86_64 AVX2)
@@ -117,8 +115,8 @@ build_windows() {
 
   WIN_OUT_DIR="$FLUTTER_PROJECT_DIR/windows/runner"
   mkdir -p "$WIN_OUT_DIR"
-  find "$WIN_BUILD_DIR" -name "whisper.dll" -exec cp {} "$WIN_OUT_DIR/whisper.dll" \;
-  echo "[3/3] Selesai! Tersimpan di: $WIN_OUT_DIR/whisper.dll"
+  find "$WIN_BUILD_DIR" -name "*.dll" -exec cp {} "$WIN_OUT_DIR/" \;
+  echo "[3/3] Selesai! Tersimpan di: $WIN_OUT_DIR/"
 }
 
 # 5. Konversi & Kuantisasi Model Hugging Face `tarteel-ai/whisper-tiny-ar-quran` ke GGML

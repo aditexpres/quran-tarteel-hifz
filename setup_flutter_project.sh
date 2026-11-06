@@ -40,6 +40,7 @@ cp "$SCRIPT_DIR/whisper_voice_service.dart" "$PROJECT_NAME/lib/whisper_voice_ser
 cp "$SCRIPT_DIR/quran_hifz_app.dart" "$PROJECT_NAME/lib/main.dart"
 
 # Salin quran_hifz_test.dart ke folder test/ dengan penyesuaian path import `../lib/`
+rm -f "$PROJECT_NAME/test/widget_test.dart"
 if [ -f "$SCRIPT_DIR/quran_hifz_test.dart" ]; then
   sed \
     -e "s|import 'mushaf_15line_and_audio.dart';|import '../lib/mushaf_15line_and_audio.dart';|g" \

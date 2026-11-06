@@ -52,7 +52,7 @@ FFI_EXPORT const char* whisper_bridge_transcribe_arabic(
     wparams.translate        = false;  // Jangan terjemahkan ke bahasa Inggris
     wparams.no_context       = true;   // Hindari halusinasi antar jendela sliding window
     wparams.single_segment   = true;   // Optimasi kecepatan real-time (1 segmen per 2 detik)
-    wparams.print_Realtime   = false;
+    wparams.print_realtime   = false;
     wparams.print_progress   = false;
     wparams.print_timestamps = false;
     wparams.print_special    = false;
