@@ -29,7 +29,6 @@ on:
         type: boolean
 
 env:
-  FLUTTER_VERSION: '3.24.0'
   PROJECT_DIR: 'quran_tarteel_hifz'
 
 jobs:
@@ -56,7 +55,6 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
 
@@ -65,9 +63,8 @@ jobs:
           chmod +x setup_flutter_project.sh
           bash setup_flutter_project.sh
 
-          # Jika trigger adalah rilis tag (v*) atau input manual meminta 30 Juz penuh,
-          # perbarui quran_master.db dengan 114 Surah penuh
-          if [[ "${{ github.ref }}" == refs/tags/v* ]] || [[ "${{ inputs.build_full_30_juz_db }}" == "true" ]]; then
+          # Jika input manual meminta 30 Juz penuh, perbarui quran_master.db dengan 114 Surah penuh
+          if [[ "${{ inputs.build_full_30_juz_db }}" == "true" ]]; then
             echo "Mengunduh database 30 Juz penuh (114 Surah) dari Quran.com API v4..."
             python3 build_quran_db.py --all \
               --master-out "${{ env.PROJECT_DIR }}/assets/db/quran_master.db" \
@@ -105,7 +102,6 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
 
@@ -152,7 +148,6 @@ jobs:
       - name: Setup Flutter SDK (Windows)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
 
@@ -194,7 +189,7 @@ jobs:
   build-macos:
     name: 4. Build macOS Universal DMG (Apple Silicon + Intel)
     needs: prepare-db-and-test
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -202,7 +197,6 @@ jobs:
       - name: Setup Flutter SDK (macOS)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
 
