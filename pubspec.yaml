@@ -19,16 +19,9 @@ dependencies:
   path: ^1.9.0
   path_provider: ^2.1.4
 
-  # 2. Perekam Suara Mikrofon Real-Time (PCM 16-bit 16kHz Mono) & Izin OS
-  record: ^5.1.2
-  permission_handler: ^11.3.1
-
-  # 3. Inferensi On-Device Whisper.cpp (FFI) & Cloud HTTP Client
+  # 2. Inferensi On-Device Whisper.cpp (FFI) & Cloud HTTP Client
   ffi: ^2.1.3
   http: ^1.2.2
-
-  # 4. Pemutar Audio Murattal Per Ayat & Auto-Koreksi Trap Jump
-  just_audio: ^0.9.40
 
 dev_dependencies:
   flutter_test:
