@@ -1,0 +1,1083 @@
+/* styles.css — Qur'an Tarteel Hifz & Radar Mutasyabihat Web */
+:root {
+  --bg-base: #0B1120;
+  --bg-surface: #0F172A;
+  --bg-card: #1E293B;
+  --bg-card-hover: #283548;
+  --border-subtle: #334155;
+  --border-focus: #14B8A6;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --teal-500: #14B8A6;
+  --teal-600: #0F766E;
+  --teal-400: #2DD4BF;
+  --teal-900: #042F2E;
+
+  --amber-500: #F59E0B;
+  --amber-900: #451A03;
+
+  --red-500: #EF4444;
+  --red-900: #450A0A;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-arabic: 'Amiri', 'Scheherazade New', serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   1. HEADER & NAVIGATION
+   ========================================================================== */
+.app-header {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 10px 16px;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  font-size: 26px;
+  background-color: var(--teal-900);
+  border: 1px solid var(--teal-600);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  font-size: 0.75rem;
+  color: var(--teal-400);
+  font-weight: 500;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-dropdown {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  min-height: 40px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.select-dropdown:focus {
+  outline: none;
+  border-color: var(--teal-400);
+}
+
+.select-dropdown.sm {
+  padding: 6px 10px;
+  min-height: 34px;
+  font-size: 0.8rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--teal-600);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background-color: var(--teal-500);
+}
+
+.btn-secondary {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--teal-500);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.btn-xs {
+  min-height: 28px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+/* Navigation Tabs */
+.nav-tabs {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  padding: 0 16px;
+  gap: 8px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  min-height: 48px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--teal-400);
+  border-bottom-color: var(--teal-400);
+}
+
+.badge {
+  background-color: var(--teal-900);
+  color: var(--teal-400);
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid var(--teal-600);
+}
+
+/* ==========================================================================
+   2. MAIN CONTENT & SECTIONS
+   ========================================================================== */
+.main-content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.tab-section {
+  display: none;
+}
+
+.tab-section.active {
+  display: block;
+}
+
+/* ==========================================================================
+   3. SECTION 1: MUSHAF 15 BARIS & VOICE HIFZ PANEL
+   ========================================================================== */
+.mushaf-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Voice Hifz Bar */
+.voice-hifz-panel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.voice-status-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-mic {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--teal-600);
+  color: #FFF;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.btn-mic:hover {
+  transform: scale(1.05);
+  background-color: var(--teal-500);
+}
+
+.btn-mic.listening {
+  background-color: var(--red-500);
+  animation: pulse 1.5s infinite;
+}
+
+.mic-icon {
+  font-size: 24px;
+  z-index: 2;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.voice-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.voice-badge {
+  background-color: var(--teal-900);
+  color: var(--teal-400);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.voice-status-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.transcript-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background-color: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--teal-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dual-Path Alert Box */
+.trap-alert-box {
+  background-color: var(--red-900);
+  border: 1px solid var(--red-500);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  animation: slideDown 250ms ease;
+}
+
+.trap-alert-box.hidden {
+  display: none;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.alert-content strong {
+  color: #FCA5A5;
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.alert-content p {
+  color: #FEE2E2;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+
+.alert-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Murattal Bar */
+.murattal-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peek-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+kbd {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  color: var(--teal-400);
+  font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   4. MUSHAF PAGE CARD (15 BARIS MADINAH)
+   ========================================================================== */
+.mushaf-page-card {
+  background-color: #070B14;
+  border: 2px solid #23354E;
+  border-radius: var(--radius-lg);
+  padding: 18px 24px;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mushaf-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px double #334862;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: #94A3B8;
+  font-weight: 600;
+}
+
+.mushaf-page-header .surah-label {
+  font-family: var(--font-arabic);
+  font-size: 1.25rem;
+  color: var(--teal-400);
+}
+
+/* 15 Baris Grid */
+.mushaf-15lines-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 600px;
+}
+
+.mushaf-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  direction: rtl;
+  min-height: 40px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.mushaf-line:hover {
+  background-color: rgba(20, 184, 166, 0.04);
+}
+
+.mushaf-line.surah-header-line {
+  justify-content: center;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.15), transparent);
+  border: 1px solid #1A474D;
+  border-radius: var(--radius-sm);
+  margin: 6px 0;
+  padding: 6px;
+}
+
+.surah-header-banner {
+  font-family: var(--font-arabic);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--teal-400);
+}
+
+.mushaf-line.bismillah-line {
+  justify-content: center;
+  font-family: var(--font-arabic);
+  font-size: 1.4rem;
+  color: #CBD5E1;
+  padding: 4px 0 8px 0;
+}
+
+/* Kata-kata Mushaf */
+.mushaf-word {
+  font-family: var(--font-arabic);
+  font-size: 1.55rem;
+  color: #F1F5F9;
+  cursor: pointer;
+  padding: 0 3px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+  display: inline-block;
+  user-select: none;
+}
+
+.mushaf-word:hover {
+  color: var(--teal-400);
+  background-color: rgba(20, 184, 166, 0.12);
+}
+
+.mushaf-word.blurred {
+  filter: blur(7px);
+  opacity: 0.35;
+}
+
+.mushaf-word.blurred:hover,
+.mushaf-word.revealed {
+  filter: none;
+  opacity: 1;
+}
+
+.mushaf-word.revealed {
+  color: var(--teal-400);
+}
+
+.ayah-end-marker {
+  font-family: var(--font-arabic);
+  font-size: 1.25rem;
+  color: #F59E0B;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 4px;
+}
+
+.mushaf-page-footer {
+  border-top: 1px double #334862;
+  margin-top: 14px;
+  padding-top: 8px;
+}
+
+.page-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Verse Detail Card (Tafsir & Perkata) */
+.verse-detail-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.verse-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.verse-badge-active {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--teal-400);
+  background-color: var(--teal-900);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--teal-600);
+}
+
+.verse-arabic-display {
+  font-family: var(--font-arabic);
+  font-size: 1.7rem;
+  line-height: 2.2;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.verse-translation-display {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.word-by-word-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  direction: rtl;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+
+.wbw-chip {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  text-align: center;
+  min-width: 70px;
+}
+
+.wbw-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  display: block;
+}
+
+.wbw-trans {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+  direction: ltr;
+}
+
+/* ==========================================================================
+   5. SECTION 2: RADAR MUTASYABIHAT CARDS
+   ========================================================================== */
+.radar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.radar-header-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+
+.radar-title-group h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.radar-title-group p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.radar-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.search-input-wrapper {
+  flex: 1;
+  min-width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-family: var(--font-sans);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--teal-400);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-actions .btn.active {
+  background-color: var(--teal-600);
+  border-color: var(--teal-500);
+  color: #FFF;
+}
+
+.radar-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mutasyabihat-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color var(--transition-fast);
+}
+
+.mutasyabihat-card:hover {
+  border-color: #475569;
+}
+
+.m-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.m-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--amber-500);
+}
+
+.m-scope-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.m-pair-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .m-pair-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.m-verse-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.m-verse-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--teal-400);
+  margin-bottom: 8px;
+}
+
+.m-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.45rem;
+  line-height: 2.1;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  direction: rtl;
+}
+
+.diff-highlight {
+  color: #F87171;
+  background-color: rgba(239, 68, 68, 0.15);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.m-next-words {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+
+.m-next-words strong {
+  color: var(--teal-400);
+  direction: rtl;
+  display: inline-block;
+  font-family: var(--font-arabic);
+  font-size: 1.05rem;
+}
+
+.m-memory-anchor-row {
+  background-color: #172554;
+  border: 1px solid #1E40AF;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.anchor-text {
+  font-size: 0.82rem;
+  color: #BFDBFE;
+}
+
+/* ==========================================================================
+   6. SECTION 3: DRILL SAMBUNG AYAT
+   ========================================================================== */
+.drill-container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.drill-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.drill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drill-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--teal-400);
+  background-color: var(--teal-900);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--teal-600);
+}
+
+.drill-score {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.drill-question-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+}
+
+.drill-prompt-info {
+  font-size: 0.82rem;
+  color: var(--amber-500);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.drill-prompt-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.9rem;
+  line-height: 2.2;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.drill-question-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.drill-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drill-option-btn {
+  background-color: var(--bg-surface);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
+  min-height: 56px;
+}
+
+.drill-option-btn:hover {
+  border-color: var(--teal-500);
+  background-color: var(--bg-card);
+}
+
+.option-tag {
+  background-color: var(--bg-card);
+  color: var(--teal-400);
+  font-size: 0.82rem;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+}
+
+.option-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.45rem;
+  color: var(--text-primary);
+}
+
+.drill-feedback {
+  border-radius: var(--radius-md);
+  padding: 16px;
+  animation: slideDown 250ms ease;
+}
+
+.drill-feedback.correct {
+  background-color: rgba(6, 78, 59, 0.4);
+  border: 1px solid #059669;
+}
+
+.drill-feedback.wrong {
+  background-color: rgba(127, 29, 29, 0.4);
+  border: 1px solid #DC2626;
+}
+
+.drill-feedback.hidden {
+  display: none;
+}
+
+.feedback-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.drill-feedback.correct .feedback-title { color: #6EE7B7; }
+.drill-feedback.wrong .feedback-title { color: #FCA5A5; }
+
+.feedback-explanation {
+  font-size: 0.85rem;
+  color: #E2E8F0;
+  margin-bottom: 12px;
+}
+
+.memory-anchor-box {
+  background-color: rgba(0, 0, 0, 0.25);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: #BAE6FD;
+  margin-bottom: 14px;
+}
+
+.feedback-action {
+  text-align: right;
+}
+
+/* ==========================================================================
+   7. MODAL DIALOG (MEMORY ANCHOR)
+   ========================================================================== */
+.app-modal {
+  margin: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.app-modal::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  padding: 20px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.modal-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.modal-tip {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.modal-body textarea {
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.modal-body textarea:focus {
+  outline: none;
+  border-color: var(--teal-400);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

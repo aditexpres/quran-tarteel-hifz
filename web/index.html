@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Qur'an Tarteel Hifz & Radar Mutasyabihat</title>
+  <meta name="description" content="Aplikasi Web Menghafal Al-Qur'an Lintas Platform dengan Voice Hifz, Mushaf 15 Baris Madinah, Radar Mutasyabihat Anti-Tertukar, dan Audio Murattal Koreksi Otomatis.">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Scheherazade+New:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">📖</div>
+        <div>
+          <h1 class="brand-title">Qur'an Tarteel Hifz</h1>
+          <p class="brand-sub">Radar Mutasyabihat & Mushaf 15 Baris</p>
+        </div>
+      </div>
+      
+      <div class="header-controls">
+        <label for="surah-select" class="sr-only">Pilih Surah</label>
+        <select id="surah-select" class="select-dropdown" aria-label="Pilih Surah">
+          <!-- Opsi surah diisi via JS -->
+        </select>
+
+        <button id="btn-hide-mode" class="btn btn-secondary btn-icon-text" aria-pressed="true" title="Mode Blur Hafalan (Peek Kata)">
+          <span class="icon">👁️</span>
+          <span class="btn-text">Hide / Peek</span>
+        </button>
+
+        <button id="btn-fullscreen" class="btn btn-ghost" aria-label="Layar Penuh" title="Layar Penuh">
+          <span class="icon">⛶</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav Tabs -->
+  <nav class="nav-tabs" aria-label="Navigasi Menu Utama">
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="mushaf" id="tab-mushaf-btn">
+        <span class="tab-icon">📖</span>
+        <span>Mushaf 15 Baris</span>
+      </button>
+      <button class="tab-btn" data-tab="radar" id="tab-radar-btn">
+        <span class="tab-icon">🎯</span>
+        <span>Radar Mutasyabihat</span>
+        <span class="badge" id="mutasyabihat-count-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="drill" id="tab-drill-btn">
+        <span class="tab-icon">⚡</span>
+        <span>Drill Sambung Ayat</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Areas -->
+  <main class="main-content">
+    <!-- SECTION 1: MUSHAF 15 BARIS & VOICE HIFZ -->
+    <section id="section-mushaf" class="tab-section active">
+      <div class="mushaf-wrapper">
+        <!-- Voice Bar & Mic Controller -->
+        <div class="voice-hifz-panel">
+          <div class="voice-status-group">
+            <button id="btn-toggle-mic" class="btn-mic" aria-label="Mulai Mendengarkan Suara (Voice Hifz)">
+              <div class="mic-pulse"></div>
+              <span class="mic-icon">🎙️</span>
+            </button>
+            <div class="voice-info">
+              <div class="voice-title-row">
+                <span class="voice-badge">VOICE HIFZ AI</span>
+                <span id="voice-indicator" class="voice-status-text">Siap mendengarkan bacaan Anda</span>
+              </div>
+              <div class="transcript-display" id="transcript-display">
+                Tekan mikrofon dan mulailah membaca, atau tekan <strong>Spasi</strong> untuk membuka kata demi kata.
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual-Path Alert Box (Muncul saat Trap Jump terdeteksi) -->
+          <div id="trap-alert-box" class="trap-alert-box hidden" role="alert">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+              <strong id="alert-title">Peringatan: Terdeteksi Lompat Surah!</strong>
+              <p id="alert-desc">Anda sedang di QS. An-Nazi'at, namun lidah Anda membaca lanjutan QS. 'Abasa.</p>
+              <div class="alert-action-row">
+                <button id="btn-play-correction" class="btn btn-sm btn-primary">Dengarkan Koreksi Otomatis</button>
+                <button id="btn-dismiss-alert" class="btn btn-sm btn-ghost">Tutup</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audio Murattal Controller -->
+          <div class="murattal-bar">
+            <div class="reciter-picker">
+              <label for="reciter-select" class="sr-only">Pilih Qari</label>
+              <select id="reciter-select" class="select-dropdown sm" aria-label="Pilih Qari Murattal">
+                <option value="Husary_128kbps">Syaikh Al-Husary (Tartil Hifz)</option>
+                <option value="Alafasy_128kbps">Syaikh Mishary Alafasy</option>
+                <option value="Minshawy_Murattal_128kbps">Syaikh Al-Minshawi</option>
+                <option value="Abdul_Basit_Murattal_192kbps">Syaikh Abdul Basit</option>
+              </select>
+            </div>
+
+            <div class="playback-controls">
+              <button id="btn-play-verse" class="btn btn-primary btn-sm" title="Putar Ayat Ini">
+                <span class="icon">▶</span> Putar Audio
+              </button>
+              <button id="btn-loop-verse" class="btn btn-secondary btn-sm" title="Loop Ulang Ayat Ini">
+                <span>🔁 Ulangi 3x</span>
+              </button>
+            </div>
+
+            <div class="peek-hint">
+              <span>Shortcut: <kbd>Spasi</kbd> = Buka Kata</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lembaran Mushaf Standar Madinah 15 Baris -->
+        <article class="mushaf-page-card" id="mushaf-page-container">
+          <!-- Header Mushaf: Nomor Halaman, Juz, Nama Surah -->
+          <header class="mushaf-page-header">
+            <span class="juz-label" id="mushaf-juz-label">JUZ 30</span>
+            <span class="surah-label" id="mushaf-surah-label">سُورَةُ النَّبَإِ</span>
+            <span class="page-label" id="mushaf-page-label">٥٨٢</span>
+          </header>
+
+          <!-- Area 15 Baris Mushaf -->
+          <div class="mushaf-15lines-grid" id="mushaf-lines-container">
+            <!-- Disusun secara dinamis oleh mushaf layout engine -->
+          </div>
+
+          <!-- Footer Mushaf -->
+          <footer class="mushaf-page-footer">
+            <div class="page-nav-row">
+              <button id="btn-prev-page" class="btn btn-ghost btn-sm">◄ Halaman Sebelumnya</button>
+              <span id="page-indicator">Halaman 582</span>
+              <button id="btn-next-page" class="btn btn-ghost btn-sm">Halaman Selanjutnya ►</button>
+            </div>
+          </footer>
+        </article>
+
+        <!-- Tafsir & Terjemahan Ayat Aktif -->
+        <div class="verse-detail-card" id="verse-detail-card">
+          <div class="verse-detail-header">
+            <span class="verse-badge-active" id="detail-verse-badge">QS. An-Naba' : Ayat 1</span>
+            <button id="btn-copy-verse" class="btn btn-ghost btn-xs" title="Salin Teks Ayat">Salin</button>
+          </div>
+          <p class="verse-arabic-display" id="detail-arabic" dir="rtl"></p>
+          <p class="verse-translation-display" id="detail-translation"></p>
+          <div class="word-by-word-container" id="detail-words-list">
+            <!-- Kosakata Perkata Interaktif -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: RADAR MUTASYABIHAT -->
+    <section id="section-radar" class="tab-section">
+      <div class="radar-container">
+        <div class="radar-header-card">
+          <div class="radar-title-group">
+            <h2>🎯 Radar Mutasyabihat (Ayat-Ayat Mirip)</h2>
+            <p>Mendeteksi kemiripan kata di Juz 30 agar hafalan Anda kokoh dan tidak tertukar atau melompat ke surah lain.</p>
+          </div>
+
+          <div class="radar-filter-bar">
+            <div class="search-input-wrapper">
+              <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input">
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-secondary btn-sm active" data-scope="all">Semua Juz 30</button>
+              <button class="btn btn-secondary btn-sm" data-scope="surah">Surah Ini</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daftar Kartu Perbandingan Mutasyabihat -->
+        <div class="radar-cards-list" id="radar-cards-container">
+          <!-- Render kartu mutasyabihat perbandingan A vs B -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: MODE DRILL SAMBUNG AYAT -->
+    <section id="section-drill" class="tab-section">
+      <div class="drill-container">
+        <div class="drill-card">
+          <div class="drill-header">
+            <div class="drill-badge">KUIS SAMBUNG AYAT MUTASYABIHAT</div>
+            <div class="drill-score" id="drill-score-badge">Skor: 0 / 0</div>
+          </div>
+
+          <div class="drill-question-box">
+            <p class="drill-prompt-info" id="drill-prompt-info">Anda sedang membaca:</p>
+            <div class="drill-prompt-arabic" id="drill-prompt-arabic" dir="rtl">...</div>
+            <p class="drill-question-label">Manakah awal ayat selanjutnya yang BENAR agar tidak melompat surah?</p>
+          </div>
+
+          <div class="drill-options-grid" id="drill-options-container">
+            <button class="drill-option-btn" id="drill-opt-a" data-choice="0">
+              <span class="option-tag">A</span>
+              <span class="option-arabic" id="drill-opt-a-text" dir="rtl">...</span>
+            </button>
+            <button class="drill-option-btn" id="drill-opt-b" data-choice="1">
+              <span class="option-tag">B</span>
+              <span class="option-arabic" id="drill-opt-b-text" dir="rtl">...</span>
+            </button>
+          </div>
+
+          <!-- Drill Feedback Card -->
+          <div class="drill-feedback hidden" id="drill-feedback">
+            <div class="feedback-title" id="drill-feedback-title">Tepat!</div>
+            <p class="feedback-explanation" id="drill-feedback-desc"></p>
+            <div class="memory-anchor-box" id="drill-feedback-anchor"></div>
+            <div class="feedback-action">
+              <button class="btn btn-primary" id="btn-next-drill">Soal Selanjutnya ►</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Edit Memory Anchor -->
+  <dialog id="anchor-modal" class="app-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Rumus Jembatan Ingatan (Memory Anchor)</h3>
+        <button id="btn-close-modal" class="btn-close" aria-label="Tutup Dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-tip">Tuliskan rumus atau petunjuk kata unik agar Anda tidak tertukar saat membaca ayat ini.</p>
+        <textarea id="modal-anchor-input" rows="4" placeholder="Contoh: An-Nazi'at (79) pakai huruf Tha (الطَّامَّةُ), sedangkan 'Abasa (80) pakai huruf Shad (الصَّاخَّةُ)..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-modal" class="btn btn-ghost">Batal</button>
+        <button id="btn-save-modal" class="btn btn-primary">Simpan Rumus</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Audio Element Global -->
+  <audio id="global-murattal-audio" preload="none"></audio>
+
+  <!-- Load Data Quran & Engine Script -->
+  <script src="data/quran_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

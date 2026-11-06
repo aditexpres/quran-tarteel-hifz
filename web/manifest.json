@@ -1,0 +1,21 @@
+{
+  "name": "Qur'an Tarteel Hifz & Radar Mutasyabihat",
+  "short_name": "QuranHifz",
+  "description": "Aplikasi Web Menghafal Al-Qur'an Lintas Platform dengan Voice Hifz, Mushaf 15 Baris, dan Radar Mutasyabihat.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#0F172A",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3247/3247385.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3247/3247385.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
