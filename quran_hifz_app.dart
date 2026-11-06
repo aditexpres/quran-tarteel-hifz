@@ -955,8 +955,8 @@ class MushafVoiceHifzView extends StatelessWidget {
                         border: Border.all(color: borderSubtle),
                       ),
                       child: Text(
-                        state.lastSpokenTranscript.isNotEmpty
-                            ? 'Suara: "${state.lastSpokenTranscript}"'
+                        state.lastTranscript.isNotEmpty
+                            ? 'Suara: "${state.lastTranscript}"'
                             : 'Tekan tombol mikrofon untuk menyimak otomatis, atau tekan Spasi untuk membuka kata demi kata.',
                         style: TextStyle(
                           fontSize: 13,
@@ -1621,7 +1621,7 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                         await widget.voiceController.setActiveVerse(verse);
                         if (widget.voiceController.state.isListening) {
                           await widget.voiceController.stopListening();
-                          final sp = widget.voiceController.state.lastSpokenTranscript;
+                          final sp = widget.voiceController.state.lastTranscript;
                           if (sp.isNotEmpty) {
                             _transcriptController.text = sp;
                             _runEvaluation(sp);
