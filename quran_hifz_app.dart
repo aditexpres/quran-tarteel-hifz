@@ -30,13 +30,41 @@ class QuranTarteelHifzApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E), // Emerald Teal
-          brightness: Brightness.dark,
-          surface: const Color(0xFF0F172A),
+        brightness: Brightness.light,
+        colorScheme: const ColorScheme(
+          brightness: Brightness.light,
+          primary: Color(0xFF165B33), // Madinah Emerald
+          onPrimary: Colors.white,
+          secondary: Color(0xFF9B7A38), // Antique Gold
+          onSecondary: Colors.white,
+          error: Color(0xFFB91C1C),
+          onError: Colors.white,
+          surface: Color(0xFFFFFFFF),
+          onSurface: Color(0xFF1C221F),
         ),
-        scaffoldBackgroundColor: const Color(0xFF0B1120),
+        scaffoldBackgroundColor: const Color(0xFFF8F6F0), // Madinah Ivory
+        cardColor: const Color(0xFFFFFFFF),
+        dividerColor: const Color(0xFFE5DFD0),
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme(
+          brightness: Brightness.dark,
+          primary: Color(0xFF22C55E),
+          onPrimary: Color(0xFF052E16),
+          secondary: Color(0xFFC7A356),
+          onSecondary: Color(0xFF1C1608),
+          error: Color(0xFFEF4444),
+          onError: Colors.white,
+          surface: Color(0xFF1B201D),
+          onSurface: Color(0xFFECE7DE),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF131615), // Tahajjud Stone
+        cardColor: const Color(0xFF202623),
+        dividerColor: const Color(0xFF2D3631),
+      ),
+      themeMode: ThemeMode.system,
       home: const QuranHifzHomeScreen(),
     );
   }

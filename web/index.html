@@ -1,94 +1,146 @@
 <!DOCTYPE html>
-<html lang="id" dir="ltr" class="dark">
+<html lang="id" dir="ltr" class="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title>Qur'an Tarteel Hifz & Radar Mutasyabihat</title>
-  <meta name="description" content="Aplikasi Web Menghafal Al-Qur'an Lintas Platform dengan Voice Hifz, Mushaf 15 Baris Madinah, Radar Mutasyabihat Anti-Tertukar, dan Audio Murattal Koreksi Otomatis.">
-  <meta name="theme-color" content="#0F172A">
+  <meta name="description" content="Aplikasi Penghafal Al-Qur'an dengan Mushaf Madinah 15 Baris, Radar Mutasyabihat, dan Audio Koreksi Otomatis.">
+  <meta name="theme-color" content="#185238">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Scheherazade+New:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Header Bar -->
+  <!-- Header Aplikasi -->
   <header class="app-header">
     <div class="header-container">
       <div class="brand">
-        <div class="brand-icon">📖</div>
+        <div class="brand-symbol" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="8" y1="7" x2="16" y2="7"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </div>
         <div>
           <h1 class="brand-title">Qur'an Tarteel Hifz</h1>
-          <p class="brand-sub">Radar Mutasyabihat & Mushaf 15 Baris</p>
+          <p class="brand-sub">Mushaf Madinah 15 Baris & Radar Mutasyabihat</p>
         </div>
       </div>
       
       <div class="header-controls">
         <label for="surah-select" class="sr-only">Pilih Surah</label>
         <select id="surah-select" class="select-dropdown" aria-label="Pilih Surah">
-          <!-- Opsi surah diisi via JS -->
+          <!-- Diisi via app.js -->
         </select>
 
-        <button id="btn-hide-mode" class="btn btn-secondary btn-icon-text" aria-pressed="true" title="Mode Blur Hafalan (Peek Kata)">
-          <span class="icon">👁️</span>
-          <span class="btn-text">Hide / Peek</span>
+        <button id="btn-hide-mode" class="btn btn-secondary btn-icon-text" aria-pressed="true" title="Mode Tutup/Intip Kata (Spasi)">
+          <svg class="btn-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="btn-text">Intip Kata</span>
+        </button>
+
+        <!-- Theme Toggle (Madinah Ivory / Tahajjud Night) -->
+        <button id="btn-theme-toggle" class="btn btn-ghost" aria-label="Ganti Tema Tampilan" title="Ganti Tema (Madinah / Malam)">
+          <svg id="theme-icon-sun" class="btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="theme-icon-moon" class="btn-svg hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
         </button>
 
         <button id="btn-fullscreen" class="btn btn-ghost" aria-label="Layar Penuh" title="Layar Penuh">
-          <span class="icon">⛶</span>
+          <svg class="btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Nav Tabs -->
+  <!-- Navigasi Menu Utama -->
   <nav class="nav-tabs" aria-label="Navigasi Menu Utama">
     <div class="tabs-container">
       <button class="tab-btn active" data-tab="mushaf" id="tab-mushaf-btn">
-        <span class="tab-icon">📖</span>
+        <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
         <span>Mushaf 15 Baris</span>
       </button>
       <button class="tab-btn" data-tab="radar" id="tab-radar-btn">
-        <span class="tab-icon">🎯</span>
+        <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+        </svg>
         <span>Radar Mutasyabihat</span>
         <span class="badge" id="mutasyabihat-count-badge">0</span>
       </button>
       <button class="tab-btn" data-tab="drill" id="tab-drill-btn">
-        <span class="tab-icon">⚡</span>
+        <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
         <span>Drill Sambung Ayat</span>
       </button>
     </div>
   </nav>
 
-  <!-- Main Content Areas -->
+  <!-- Area Konten Utama -->
   <main class="main-content">
-    <!-- SECTION 1: MUSHAF 15 BARIS & VOICE HIFZ -->
+    <!-- SEKSI 1: MUSHAF 15 BARIS & SIMAK SUARA -->
     <section id="section-mushaf" class="tab-section active">
       <div class="mushaf-wrapper">
-        <!-- Voice Bar & Mic Controller -->
+        <!-- Panel Simak Suara & Kontrol Audio -->
         <div class="voice-hifz-panel">
           <div class="voice-status-group">
-            <button id="btn-toggle-mic" class="btn-mic" aria-label="Mulai Mendengarkan Suara (Voice Hifz)">
-              <div class="mic-pulse"></div>
-              <span class="mic-icon">🎙️</span>
+            <button id="btn-toggle-mic" class="btn-mic" aria-label="Mulai Menyimak Suara">
+              <svg class="mic-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
             </button>
             <div class="voice-info">
               <div class="voice-title-row">
-                <span class="voice-badge">VOICE HIFZ AI</span>
-                <span id="voice-indicator" class="voice-status-text">Siap mendengarkan bacaan Anda</span>
+                <span class="status-indicator" id="voice-indicator-dot"></span>
+                <span id="voice-indicator" class="voice-status-text">Siap menyimak bacaan hafalan</span>
               </div>
               <div class="transcript-display" id="transcript-display">
-                Tekan mikrofon dan mulailah membaca, atau tekan <strong>Spasi</strong> untuk membuka kata demi kata.
+                Tekan tombol mikrofon untuk menyimak otomatis, atau tekan <kbd>Spasi</kbd> untuk membuka kata demi kata.
               </div>
             </div>
           </div>
 
-          <!-- Dual-Path Alert Box (Muncul saat Trap Jump terdeteksi) -->
+          <!-- Alert Kotak Deteksi Lompat Surah -->
           <div id="trap-alert-box" class="trap-alert-box hidden" role="alert">
-            <div class="alert-icon">⚠️</div>
+            <div class="alert-symbol" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
             <div class="alert-content">
-              <strong id="alert-title">Peringatan: Terdeteksi Lompat Surah!</strong>
-              <p id="alert-desc">Anda sedang di QS. An-Nazi'at, namun lidah Anda membaca lanjutan QS. 'Abasa.</p>
+              <strong id="alert-title">Peringatan: Potensi Lompat Surah</strong>
+              <p id="alert-desc">Lidah Anda membaca lafal yang identik dengan ayat di surah lain.</p>
               <div class="alert-action-row">
                 <button id="btn-play-correction" class="btn btn-sm btn-primary">Dengarkan Koreksi Otomatis</button>
                 <button id="btn-dismiss-alert" class="btn btn-sm btn-ghost">Tutup</button>
@@ -96,53 +148,72 @@
             </div>
           </div>
 
-          <!-- Audio Murattal Controller -->
+          <!-- Murattal Bar -->
           <div class="murattal-bar">
             <div class="reciter-picker">
               <label for="reciter-select" class="sr-only">Pilih Qari</label>
               <select id="reciter-select" class="select-dropdown sm" aria-label="Pilih Qari Murattal">
-                <option value="Husary_128kbps">Syaikh Al-Husary (Tartil Hifz)</option>
-                <option value="Alafasy_128kbps">Syaikh Mishary Alafasy</option>
-                <option value="Minshawy_Murattal_128kbps">Syaikh Al-Minshawi</option>
-                <option value="Abdul_Basit_Murattal_192kbps">Syaikh Abdul Basit</option>
+                <option value="Husary_128kbps">Syaikh Al-Husary (Tartil Standar)</option>
+                <option value="Alafasy_128kbps">Syaikh Mishary Rashid Alafasy</option>
+                <option value="Minshawy_Murattal_128kbps">Syaikh Muhammad Siddiq Al-Minshawi</option>
+                <option value="Abdul_Basit_Murattal_192kbps">Syaikh Abdul Basit Abdus Samad</option>
               </select>
             </div>
 
             <div class="playback-controls">
               <button id="btn-play-verse" class="btn btn-primary btn-sm" title="Putar Ayat Ini">
-                <span class="icon">▶</span> Putar Audio
+                <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span>Putar Audio</span>
               </button>
-              <button id="btn-loop-verse" class="btn btn-secondary btn-sm" title="Loop Ulang Ayat Ini">
-                <span>🔁 Ulangi 3x</span>
+              <button id="btn-loop-verse" class="btn btn-secondary btn-sm" title="Ulangi Ayat Ini">
+                <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="17 1 21 5 17 9"></polyline>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                  <polyline points="7 23 3 19 7 15"></polyline>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+                <span>Ulangi 1x</span>
               </button>
             </div>
 
             <div class="peek-hint">
-              <span>Shortcut: <kbd>Spasi</kbd> = Buka Kata</span>
+              <span>Navigasi: <kbd>Spasi</kbd> untuk intip kata berikutnya</span>
             </div>
           </div>
         </div>
 
-        <!-- Lembaran Mushaf Standar Madinah 15 Baris -->
+        <!-- Lembaran Mushaf Madinah 15 Baris -->
         <article class="mushaf-page-card" id="mushaf-page-container">
-          <!-- Header Mushaf: Nomor Halaman, Juz, Nama Surah -->
+          <!-- Bingkai Ornamen Luar & Header Halaman -->
           <header class="mushaf-page-header">
-            <span class="juz-label" id="mushaf-juz-label">JUZ 30</span>
+            <span class="juz-label" id="mushaf-juz-label">الجزء ٣٠</span>
             <span class="surah-label" id="mushaf-surah-label">سُورَةُ النَّبَإِ</span>
             <span class="page-label" id="mushaf-page-label">٥٨٢</span>
           </header>
 
-          <!-- Area 15 Baris Mushaf -->
+          <!-- 15 Baris Mushaf -->
           <div class="mushaf-15lines-grid" id="mushaf-lines-container">
-            <!-- Disusun secara dinamis oleh mushaf layout engine -->
+            <!-- Disusun secara proporsional oleh layout engine -->
           </div>
 
-          <!-- Footer Mushaf -->
+          <!-- Footer Halaman & Navigasi -->
           <footer class="mushaf-page-footer">
             <div class="page-nav-row">
-              <button id="btn-prev-page" class="btn btn-ghost btn-sm">◄ Halaman Sebelumnya</button>
+              <button id="btn-prev-page" class="btn btn-ghost btn-sm" aria-label="Halaman Sebelumnya">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Sebelumnya</span>
+              </button>
               <span id="page-indicator">Halaman 582</span>
-              <button id="btn-next-page" class="btn btn-ghost btn-sm">Halaman Selanjutnya ►</button>
+              <button id="btn-next-page" class="btn btn-ghost btn-sm" aria-label="Halaman Selanjutnya">
+                <span>Selanjutnya</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
             </div>
           </footer>
         </article>
@@ -151,29 +222,39 @@
         <div class="verse-detail-card" id="verse-detail-card">
           <div class="verse-detail-header">
             <span class="verse-badge-active" id="detail-verse-badge">QS. An-Naba' : Ayat 1</span>
-            <button id="btn-copy-verse" class="btn btn-ghost btn-xs" title="Salin Teks Ayat">Salin</button>
+            <button id="btn-copy-verse" class="btn btn-ghost btn-xs" title="Salin Ayat & Terjemah">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Salin</span>
+            </button>
           </div>
           <p class="verse-arabic-display" id="detail-arabic" dir="rtl"></p>
           <p class="verse-translation-display" id="detail-translation"></p>
           <div class="word-by-word-container" id="detail-words-list">
-            <!-- Kosakata Perkata Interaktif -->
+            <!-- Kosakata Perkata -->
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 2: RADAR MUTASYABIHAT -->
+    <!-- SEKSI 2: RADAR MUTASYABIHAT -->
     <section id="section-radar" class="tab-section">
       <div class="radar-container">
         <div class="radar-header-card">
           <div class="radar-title-group">
-            <h2>🎯 Radar Mutasyabihat (Ayat-Ayat Mirip)</h2>
-            <p>Mendeteksi kemiripan kata di Juz 30 agar hafalan Anda kokoh dan tidak tertukar atau melompat ke surah lain.</p>
+            <h2>Radar Mutasyabihat</h2>
+            <p>Memetakan pasangan ayat serupa di Juz 30 agar hafalan Anda tidak tertukar atau melompat surah.</p>
           </div>
 
           <div class="radar-filter-bar">
             <div class="search-input-wrapper">
-              <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input">
+              <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input" aria-label="Cari mutasyabihat">
             </div>
             <div class="filter-actions">
               <button class="btn btn-secondary btn-sm active" data-scope="all">Semua Juz 30</button>
@@ -182,26 +263,26 @@
           </div>
         </div>
 
-        <!-- Daftar Kartu Perbandingan Mutasyabihat -->
+        <!-- Daftar Kartu Mutasyabihat -->
         <div class="radar-cards-list" id="radar-cards-container">
-          <!-- Render kartu mutasyabihat perbandingan A vs B -->
+          <!-- Render kartu mutasyabihat via JS -->
         </div>
       </div>
     </section>
 
-    <!-- SECTION 3: MODE DRILL SAMBUNG AYAT -->
+    <!-- SEKSI 3: MODE DRILL SAMBUNG AYAT -->
     <section id="section-drill" class="tab-section">
       <div class="drill-container">
         <div class="drill-card">
           <div class="drill-header">
-            <div class="drill-badge">KUIS SAMBUNG AYAT MUTASYABIHAT</div>
+            <span class="drill-tag">Latihan Sambung Ayat</span>
             <div class="drill-score" id="drill-score-badge">Skor: 0 / 0</div>
           </div>
 
           <div class="drill-question-box">
             <p class="drill-prompt-info" id="drill-prompt-info">Anda sedang membaca:</p>
             <div class="drill-prompt-arabic" id="drill-prompt-arabic" dir="rtl">...</div>
-            <p class="drill-question-label">Manakah awal ayat selanjutnya yang BENAR agar tidak melompat surah?</p>
+            <p class="drill-question-label">Pilihlah awal ayat selanjutnya yang tepat:</p>
           </div>
 
           <div class="drill-options-grid" id="drill-options-container">
@@ -215,13 +296,13 @@
             </button>
           </div>
 
-          <!-- Drill Feedback Card -->
+          <!-- Umpan Balik Kuis -->
           <div class="drill-feedback hidden" id="drill-feedback">
-            <div class="feedback-title" id="drill-feedback-title">Tepat!</div>
+            <div class="feedback-title" id="drill-feedback-title">Tepat</div>
             <p class="feedback-explanation" id="drill-feedback-desc"></p>
             <div class="memory-anchor-box" id="drill-feedback-anchor"></div>
             <div class="feedback-action">
-              <button class="btn btn-primary" id="btn-next-drill">Soal Selanjutnya ►</button>
+              <button class="btn btn-primary" id="btn-next-drill">Soal Selanjutnya</button>
             </div>
           </div>
         </div>
@@ -229,16 +310,21 @@
     </section>
   </main>
 
-  <!-- Modal Edit Memory Anchor -->
+  <!-- Dialog Modal Edit Memory Anchor -->
   <dialog id="anchor-modal" class="app-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Rumus Jembatan Ingatan (Memory Anchor)</h3>
-        <button id="btn-close-modal" class="btn-close" aria-label="Tutup Dialog">✕</button>
+        <h3>Jembatan Ingatan (Rumus Anti-Tertukar)</h3>
+        <button id="btn-close-modal" class="btn-close" aria-label="Tutup Dialog">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
-        <p class="modal-tip">Tuliskan rumus atau petunjuk kata unik agar Anda tidak tertukar saat membaca ayat ini.</p>
-        <textarea id="modal-anchor-input" rows="4" placeholder="Contoh: An-Nazi'at (79) pakai huruf Tha (الطَّامَّةُ), sedangkan 'Abasa (80) pakai huruf Shad (الصَّاخَّةُ)..."></textarea>
+        <p class="modal-tip">Tuliskan kata kunci atau rumus pembeda agar ingatan Anda tidak tertukar saat menyambung ayat ini.</p>
+        <textarea id="modal-anchor-input" rows="4" placeholder="Contoh: An-Nazi'at (79) menggunakan lafal Ath-Thaammah, sedangkan 'Abasa (80) menggunakan Ash-Shaakhkhah..."></textarea>
       </div>
       <div class="modal-footer">
         <button id="btn-cancel-modal" class="btn btn-ghost">Batal</button>
@@ -250,7 +336,7 @@
   <!-- Audio Element Global -->
   <audio id="global-murattal-audio" preload="none"></audio>
 
-  <!-- Load Data Quran & Engine Script -->
+  <!-- Script Dataset & Engine -->
   <script src="data/quran_data.js"></script>
   <script src="app.js"></script>
 </body>

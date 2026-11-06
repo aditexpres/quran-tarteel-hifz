@@ -41,6 +41,9 @@
     surahSelect: document.getElementById('surah-select'),
     btnHideMode: document.getElementById('btn-hide-mode'),
     btnFullscreen: document.getElementById('btn-fullscreen'),
+    btnThemeToggle: document.getElementById('btn-theme-toggle'),
+    themeIconSun: document.getElementById('theme-icon-sun'),
+    themeIconMoon: document.getElementById('theme-icon-moon'),
     tabBtns: document.querySelectorAll('.tab-btn'),
     tabSections: document.querySelectorAll('.tab-section'),
     
@@ -171,12 +174,40 @@
 
     if (!state.data) return;
 
+    initTheme();
     populateSurahDropdown();
     setupEventListeners();
     setupSpeechRecognition();
     renderMushafView();
     renderRadarMutasyabihat();
     initDrillQuestions();
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem('quran_theme') || 'light';
+    setTheme(saved);
+
+    if (DOM.btnThemeToggle) {
+      DOM.btnThemeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        setTheme(isDark ? 'light' : 'dark');
+      });
+    }
+  }
+
+  function setTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+      if (DOM.themeIconSun) DOM.themeIconSun.classList.add('hidden');
+      if (DOM.themeIconMoon) DOM.themeIconMoon.classList.remove('hidden');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+      if (DOM.themeIconSun) DOM.themeIconSun.classList.remove('hidden');
+      if (DOM.themeIconMoon) DOM.themeIconMoon.classList.add('hidden');
+    }
+    localStorage.setItem('quran_theme', theme);
   }
 
   function populateSurahDropdown() {
@@ -381,7 +412,7 @@
 
       card.innerHTML = `
         <div class="m-card-header">
-          <span class="m-title">🎯 ${pair.title}</span>
+          <span class="m-title">${pair.title}</span>
           <span class="m-scope-badge">Juz ${pair.scope_juz || '30'}</span>
         </div>
 
@@ -389,7 +420,10 @@
           <div class="m-verse-box">
             <div class="m-verse-header">
               <span>QS. ${pair.surah_name_1} : ${pair.verse_num_1}</span>
-              <button class="btn btn-ghost btn-xs btn-audio-compare" data-surah="${pair.surah_id_1}" data-verse="${pair.verse_num_1}">▶ Audio</button>
+              <button class="btn btn-ghost btn-xs btn-audio-compare" data-surah="${pair.surah_id_1}" data-verse="${pair.verse_num_1}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>Putar Audio</span>
+              </button>
             </div>
             <div class="m-arabic">${formattedText1}</div>
             <div class="m-next-words">
@@ -400,7 +434,10 @@
           <div class="m-verse-box">
             <div class="m-verse-header">
               <span>QS. ${pair.surah_name_2} : ${pair.verse_num_2}</span>
-              <button class="btn btn-ghost btn-xs btn-audio-compare" data-surah="${pair.surah_id_2}" data-verse="${pair.verse_num_2}">▶ Audio</button>
+              <button class="btn btn-ghost btn-xs btn-audio-compare" data-surah="${pair.surah_id_2}" data-verse="${pair.verse_num_2}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>Putar Audio</span>
+              </button>
             </div>
             <div class="m-arabic">${formattedText2}</div>
             <div class="m-next-words">
@@ -411,10 +448,10 @@
 
         <div class="m-memory-anchor-row">
           <div class="anchor-text">
-            💡 <strong>Jembatan Ingatan:</strong> 
+            <strong>Jembatan Ingatan:</strong> 
             <span id="anchor-display-${pair.group_id}">${savedAnchor || 'Belum ada rumus catatan. Klik tombol edit untuk menambah rumus anti-tertukar.'}</span>
           </div>
-          <button class="btn btn-secondary btn-xs btn-edit-anchor" data-group-id="${pair.group_id}">✏️ Edit Rumus</button>
+          <button class="btn btn-secondary btn-xs btn-edit-anchor" data-group-id="${pair.group_id}">Edit Rumus</button>
         </div>
       `;
 
@@ -591,10 +628,21 @@
     DOM.globalAudio.src = url;
     DOM.globalAudio.play().catch(e => console.warn('Audio play hindered:', e));
 
-    DOM.btnPlayVerse.innerHTML = '<span class="icon">⏸</span> Jeda';
+    DOM.btnPlayVerse.innerHTML = `
+      <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="6" y="4" width="4" height="16"></rect>
+        <rect x="14" y="4" width="4" height="16"></rect>
+      </svg>
+      <span>Jeda Audio</span>
+    `;
 
     DOM.globalAudio.onended = () => {
-      DOM.btnPlayVerse.innerHTML = '<span class="icon">▶</span> Putar Audio';
+      DOM.btnPlayVerse.innerHTML = `
+        <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>Putar Audio</span>
+      `;
       if (state.repeatCount > 1 && state.currentRepeat < state.repeatCount - 1) {
         state.currentRepeat++;
         DOM.globalAudio.play();
@@ -607,7 +655,12 @@
   function togglePlayCurrentVerse() {
     if (!DOM.globalAudio.paused && DOM.globalAudio.src) {
       DOM.globalAudio.pause();
-      DOM.btnPlayVerse.innerHTML = '<span class="icon">▶</span> Putar Audio';
+      DOM.btnPlayVerse.innerHTML = `
+        <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>Putar Audio</span>
+      `;
     } else {
       const currentVerse = state.data.verses.find(
         v => v.surah_id === state.activeSurahId && v.verse_number === state.activeVerseIndex + 1
@@ -667,11 +720,11 @@
     if (isCorrect) {
       state.drill.score++;
       DOM.drillFeedback.className = 'drill-feedback correct';
-      DOM.drillFeedbackTitle.textContent = '🎉 Tepat Sekali!';
+      DOM.drillFeedbackTitle.textContent = 'Jawaban Tepat';
       DOM.drillFeedbackDesc.textContent = `Anda berhasil melanjutkan ayat tanpa terjebak ke surah ${q.surah_name_2}.`;
     } else {
       DOM.drillFeedback.className = 'drill-feedback wrong';
-      DOM.drillFeedbackTitle.textContent = '⚠️ Terpeleset!';
+      DOM.drillFeedbackTitle.textContent = 'Perhatian: Pilihan Keliru';
       DOM.drillFeedbackDesc.textContent = `Itu adalah lanjutan milik QS. ${q.surah_name_2} : ${q.verse_num_2 + 1}.`;
     }
 
@@ -765,7 +818,15 @@
       const counts = [1, 3, 5];
       const nextIdx = (counts.indexOf(state.repeatCount) + 1) % counts.length;
       state.repeatCount = counts[nextIdx];
-      DOM.btnLoopVerse.innerHTML = `<span>🔁 Ulangi ${state.repeatCount}x</span>`;
+      DOM.btnLoopVerse.innerHTML = `
+        <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        <span>Ulangi ${state.repeatCount}x</span>
+      `;
     });
 
     // Copy Verse

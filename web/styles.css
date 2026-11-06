@@ -1,43 +1,127 @@
-/* styles.css — Qur'an Tarteel Hifz & Radar Mutasyabihat Web */
+/* styles.css — Qur'an Tarteel Hifz & Radar Mutasyabihat
+   Desain Editorial Mushaf Madinah: Elegan, Sakral, Kontras Tinggi, & Anti-Slop
+   ========================================================================== */
+
+/* 1. VARIABEL TEMA & WARNA (MUSHAF MADINAH LIGHT & TAHAJJUD NIGHT) */
 :root {
-  --bg-base: #0B1120;
-  --bg-surface: #0F172A;
-  --bg-card: #1E293B;
-  --bg-card-hover: #283548;
-  --border-subtle: #334155;
-  --border-focus: #14B8A6;
+  /* Mode Mushaf Madinah (Light / Default) */
+  --bg-base: #F8F6F0;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F4F1E8;
+  --bg-mushaf: #FCFAF6;
+  --bg-subtle: #F1ECE0;
 
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --border-subtle: #E5DFCFA;
+  --border-subtle: #E5DFD0;
+  --border-card: #DDD6C4;
+  --border-ornament: #C8AA76;
+  --border-green: #1B5E3B;
 
-  --teal-500: #14B8A6;
-  --teal-600: #0F766E;
-  --teal-400: #2DD4BF;
-  --teal-900: #042F2E;
+  --text-primary: #1C221F;
+  --text-secondary: #57655F;
+  --text-muted: #829089;
+  --text-arabic: #111815;
 
-  --amber-500: #F59E0B;
-  --amber-900: #451A03;
+  /* Brand Colors: Hijau Madinah & Emas Antik */
+  --primary: #165B33;
+  --primary-hover: #114928;
+  --primary-subtle: #EAF4EE;
+  --primary-text: #FFFFFF;
 
-  --red-500: #EF4444;
-  --red-900: #450A0A;
+  --accent-gold: #9B7A38;
+  --accent-gold-subtle: #FEF8ED;
+  --accent-gold-border: #D6BD8A;
 
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Mutasyabihat Diff Highlights (Kuning Madu Hangat) */
+  --diff-bg: #FEF3C7;
+  --diff-text: #92400E;
+  --diff-border: #F59E0B;
+
+  /* Peringatan & Kesalahan (Merah Bata Muted) */
+  --alert-bg: #FEF2F2;
+  --alert-border: #F87171;
+  --alert-text: #991B1B;
+
+  /* Sukses (Hijau Zaitun) */
+  --success-bg: #ECFDF5;
+  --success-border: #6EE7B7;
+  --success-text: #065F46;
+
+  /* Tipografi */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-arabic: 'Amiri', 'Scheherazade New', serif;
 
+  /* Radius & Elevasi Restrained (Sesuai R-11 & R-12) */
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-lg: 14px;
+  --radius-pill: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(28, 34, 31, 0.05);
+  --shadow-md: 0 4px 12px rgba(28, 34, 31, 0.06);
 
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 2. MODE TAHAJJUD / MALAM (DARK MODE RETINAL-SAFE) */
+html.dark {
+  --bg-base: #131615;
+  --bg-surface: #1B201D;
+  --bg-card: #202623;
+  --bg-card-hover: #262E2A;
+  --bg-mushaf: #181D1A;
+  --bg-subtle: #242B27;
+
+  --border-subtle: #2D3631;
+  --border-card: #37423C;
+  --border-ornament: #6E5B33;
+  --border-green: #2E8B57;
+
+  --text-primary: #ECE7DE;
+  --text-secondary: #9EA8A2;
+  --text-muted: #6C7872;
+  --text-arabic: #F4F1EA;
+
+  --primary: #22C55E;
+  --primary-hover: #16A34A;
+  --primary-subtle: rgba(34, 197, 94, 0.12);
+  --primary-text: #052E16;
+
+  --accent-gold: #C7A356;
+  --accent-gold-subtle: rgba(199, 163, 86, 0.12);
+  --accent-gold-border: #8C7034;
+
+  --diff-bg: rgba(245, 158, 11, 0.18);
+  --diff-text: #FDE68A;
+  --diff-border: #D97706;
+
+  --alert-bg: rgba(239, 68, 68, 0.14);
+  --alert-border: #EF4444;
+  --alert-text: #FCA5A5;
+
+  --success-bg: rgba(34, 197, 94, 0.14);
+  --success-border: #22C55E;
+  --success-text: #86EFAC;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   2. RESET & BASE ELEMENTS
+   ========================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -51,8 +135,19 @@ body {
   flex-direction: column;
 }
 
+/* Accessibility Focus States */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button, select, input, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
 /* ==========================================================================
-   1. HEADER & NAVIGATION
+   3. HEADER & NAVIGATION
    ========================================================================== */
 .app-header {
   background-color: var(--bg-surface);
@@ -64,7 +159,7 @@ body {
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1140px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -75,19 +170,20 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.brand-icon {
-  font-size: 26px;
-  background-color: var(--teal-900);
-  border: 1px solid var(--teal-600);
-  width: 44px;
-  height: 44px;
+.brand-symbol {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: var(--primary-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
 
 .brand-title {
@@ -95,11 +191,12 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .brand-sub {
-  font-size: 0.75rem;
-  color: var(--teal-400);
+  font-size: 0.76rem;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -109,66 +206,75 @@ body {
   gap: 8px;
 }
 
+/* Select Dropdown */
 .select-dropdown {
   background-color: var(--bg-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  font-family: var(--font-sans);
-  min-height: 40px;
+  min-height: 44px; /* Touch target 44px */
   cursor: pointer;
   transition: border-color var(--transition-fast);
 }
 
-.select-dropdown:focus {
-  outline: none;
-  border-color: var(--teal-400);
+.select-dropdown:hover {
+  border-color: var(--primary);
 }
 
 .select-dropdown.sm {
   padding: 6px 10px;
-  min-height: 34px;
-  font-size: 0.8rem;
+  min-height: 38px;
+  font-size: 0.82rem;
 }
 
-/* Buttons */
+/* Button System */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-family: var(--font-sans);
   font-weight: 600;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 44px; /* Minimum 44px touch target */
   padding: 8px 14px;
   font-size: 0.85rem;
   transition: all var(--transition-fast);
   text-decoration: none;
+  user-select: none;
+}
+
+.btn-svg {
+  flex-shrink: 0;
 }
 
 .btn-primary {
-  background-color: var(--teal-600);
-  color: #FFFFFF;
+  background-color: var(--primary);
+  color: var(--primary-text);
 }
 
 .btn-primary:hover {
-  background-color: var(--teal-500);
+  background-color: var(--primary-hover);
 }
 
 .btn-secondary {
   background-color: var(--bg-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border-color: var(--border-card);
 }
 
 .btn-secondary:hover {
   background-color: var(--bg-card-hover);
-  border-color: var(--teal-500);
+  border-color: var(--primary);
+}
+
+.btn-secondary.active {
+  background-color: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-ghost {
@@ -178,22 +284,39 @@ body {
 
 .btn-ghost:hover {
   color: var(--text-primary);
-  background-color: var(--bg-card);
+  background-color: var(--bg-card-hover);
 }
 
 .btn-sm {
-  min-height: 34px;
-  padding: 4px 10px;
-  font-size: 0.8rem;
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
 }
 
 .btn-xs {
-  min-height: 28px;
-  padding: 2px 8px;
-  font-size: 0.75rem;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
 }
 
-/* Navigation Tabs */
+.btn-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-card-hover);
+}
+
+/* Tabs Navigation */
 .nav-tabs {
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
@@ -201,8 +324,12 @@ body {
   scrollbar-width: none;
 }
 
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
 .tabs-container {
-  max-width: 1200px;
+  max-width: 1140px;
   margin: 0 auto;
   display: flex;
   padding: 0 16px;
@@ -213,10 +340,9 @@ body {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-family: var(--font-sans);
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 12px 14px;
+  font-size: 0.88rem;
+  padding: 12px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -232,28 +358,33 @@ body {
 }
 
 .tab-btn.active {
-  color: var(--teal-400);
-  border-bottom-color: var(--teal-400);
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tab-svg {
+  flex-shrink: 0;
 }
 
 .badge {
-  background-color: var(--teal-900);
-  color: var(--teal-400);
-  font-size: 0.75rem;
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
   padding: 2px 7px;
-  border-radius: 9999px;
-  border: 1px solid var(--teal-600);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
 }
 
 /* ==========================================================================
-   2. MAIN CONTENT & SECTIONS
+   4. KONTEN UTAMA & SEKSI
    ========================================================================== */
 .main-content {
   flex: 1;
-  max-width: 1200px;
+  max-width: 1140px;
   width: 100%;
   margin: 0 auto;
-  padding: 16px;
+  padding: 18px 16px 40px;
 }
 
 .tab-section {
@@ -264,24 +395,24 @@ body {
   display: block;
 }
 
-/* ==========================================================================
-   3. SECTION 1: MUSHAF 15 BARIS & VOICE HIFZ PANEL
-   ========================================================================== */
 .mushaf-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
-/* Voice Hifz Bar */
+/* ==========================================================================
+   5. PANEL SIMAK SUARA & KONTROL MURATTAL
+   ========================================================================== */
 .voice-hifz-panel {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  box-shadow: var(--shadow-sm);
 }
 
 .voice-status-group {
@@ -291,40 +422,29 @@ body {
 }
 
 .btn-mic {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  background-color: var(--teal-600);
-  color: #FFF;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-green);
+  background-color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .btn-mic:hover {
-  transform: scale(1.05);
-  background-color: var(--teal-500);
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
 }
 
 .btn-mic.listening {
-  background-color: var(--red-500);
-  animation: pulse 1.5s infinite;
-}
-
-.mic-icon {
-  font-size: 24px;
-  z-index: 2;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-  70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  background-color: #DC2626;
+  border-color: #B91C1C;
+  color: #FFFFFF;
 }
 
 .voice-info {
@@ -336,17 +456,19 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
-.voice-badge {
-  background-color: var(--teal-900);
-  color: var(--teal-400);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.btn-mic.listening ~ .voice-info .status-indicator {
+  background-color: #DC2626;
 }
 
 .voice-status-text {
@@ -356,54 +478,50 @@ body {
 }
 
 .transcript-display {
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--text-secondary);
-  background-color: var(--bg-card);
+  background-color: var(--bg-subtle);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--teal-500);
+  border: 1px solid var(--border-subtle);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Dual-Path Alert Box */
+/* Alert Trap Jump */
 .trap-alert-box {
-  background-color: var(--red-900);
-  border: 1px solid var(--red-500);
+  background-color: var(--alert-bg);
+  border: 1px solid var(--alert-border);
   border-radius: var(--radius-md);
   padding: 12px 16px;
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  animation: slideDown 250ms ease;
 }
 
 .trap-alert-box.hidden {
   display: none;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.alert-icon {
-  font-size: 22px;
+.alert-symbol {
+  color: var(--alert-text);
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .alert-content strong {
-  color: #FCA5A5;
+  color: var(--alert-text);
   font-size: 0.9rem;
   display: block;
   margin-bottom: 2px;
 }
 
 .alert-content p {
-  color: #FEE2E2;
-  font-size: 0.82rem;
+  color: var(--alert-text);
+  font-size: 0.83rem;
   margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 .alert-action-row {
@@ -411,7 +529,7 @@ body {
   gap: 8px;
 }
 
-/* Murattal Bar */
+/* Bar Murattal */
 .murattal-bar {
   display: flex;
   flex-wrap: wrap;
@@ -435,50 +553,62 @@ body {
 
 kbd {
   background-color: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 4px;
   padding: 2px 6px;
   font-family: inherit;
-  color: var(--teal-400);
-  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 /* ==========================================================================
-   4. MUSHAF PAGE CARD (15 BARIS MADINAH)
+   6. LEMBARAN MUSHAF MADINAH 15 BARIS (AUTHENTIC MANUSCRIPT)
    ========================================================================== */
 .mushaf-page-card {
-  background-color: #070B14;
-  border: 2px solid #23354E;
-  border-radius: var(--radius-lg);
-  padding: 18px 24px;
+  background-color: var(--bg-mushaf);
+  border: 2px solid var(--border-ornament);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md);
+  outline: 1px solid var(--border-card);
+  outline-offset: -6px;
 }
 
+/* Header Lembaran Mushaf: Juz, Nama Surah, Halaman */
 .mushaf-page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px double #334862;
+  border-bottom: 1px solid var(--border-ornament);
   padding-bottom: 8px;
-  margin-bottom: 12px;
-  font-size: 0.85rem;
-  color: #94A3B8;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .mushaf-page-header .surah-label {
   font-family: var(--font-arabic);
-  font-size: 1.25rem;
-  color: var(--teal-400);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--primary);
 }
 
-/* 15 Baris Grid */
+.mushaf-page-header .juz-label,
+.mushaf-page-header .page-label {
+  font-family: var(--font-arabic);
+  font-size: 1.15rem;
+  color: var(--accent-gold);
+}
+
+/* 15 Baris Mushaf Grid */
 .mushaf-15lines-grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-height: 600px;
+  gap: 8px;
+  min-height: 560px;
 }
 
 .mushaf-line {
@@ -486,87 +616,96 @@ kbd {
   align-items: center;
   justify-content: space-between;
   direction: rtl;
-  min-height: 40px;
+  min-height: 42px;
   padding: 2px 4px;
   border-radius: 4px;
   transition: background-color var(--transition-fast);
 }
 
 .mushaf-line:hover {
-  background-color: rgba(20, 184, 166, 0.04);
+  background-color: var(--bg-card-hover);
 }
 
+/* Banner Ornamen Kepala Surah */
 .mushaf-line.surah-header-line {
   justify-content: center;
-  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.15), transparent);
-  border: 1px solid #1A474D;
+  padding: 6px 0;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-ornament);
   border-radius: var(--radius-sm);
   margin: 6px 0;
-  padding: 6px;
 }
 
 .surah-header-banner {
   font-family: var(--font-arabic);
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--teal-400);
+  color: var(--primary);
+  letter-spacing: 0.02em;
 }
 
+/* Baris Basmalah */
 .mushaf-line.bismillah-line {
   justify-content: center;
   font-family: var(--font-arabic);
-  font-size: 1.4rem;
-  color: #CBD5E1;
-  padding: 4px 0 8px 0;
+  font-size: 1.45rem;
+  color: var(--text-arabic);
+  padding: 6px 0;
+  letter-spacing: 0.02em;
 }
 
 /* Kata-kata Mushaf */
 .mushaf-word {
   font-family: var(--font-arabic);
   font-size: 1.55rem;
-  color: #F1F5F9;
+  color: var(--text-arabic);
   cursor: pointer;
-  padding: 0 3px;
+  padding: 0 4px;
   border-radius: 4px;
   transition: all var(--transition-fast);
-  display: inline-block;
+  line-height: 1.9;
   user-select: none;
 }
 
 .mushaf-word:hover {
-  color: var(--teal-400);
-  background-color: rgba(20, 184, 166, 0.12);
+  background-color: var(--primary-subtle);
+  color: var(--primary);
 }
 
+/* Mode Blur Hafalan (Anti-Slop Clean Blur) */
 .mushaf-word.blurred {
-  filter: blur(7px);
+  filter: blur(5px);
   opacity: 0.35;
+  background-color: var(--border-subtle);
 }
 
-.mushaf-word.blurred:hover,
+.mushaf-word.blurred:hover {
+  filter: blur(2px);
+  opacity: 0.7;
+}
+
 .mushaf-word.revealed {
   filter: none;
   opacity: 1;
+  color: var(--primary);
 }
 
-.mushaf-word.revealed {
-  color: var(--teal-400);
-}
-
+/* Penanda Nomor Ayat (Ayah End Symbol) */
 .ayah-end-marker {
   font-family: var(--font-arabic);
   font-size: 1.25rem;
-  color: #F59E0B;
+  color: var(--accent-gold);
+  padding: 0 4px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  margin: 0 4px;
+  user-select: none;
 }
 
+/* Footer Lembaran Mushaf */
 .mushaf-page-footer {
-  border-top: 1px double #334862;
-  margin-top: 14px;
-  padding-top: 8px;
+  border-top: 1px solid var(--border-ornament);
+  padding-top: 12px;
+  margin-top: 16px;
 }
 
 .page-nav-row {
@@ -577,12 +716,15 @@ kbd {
   color: var(--text-secondary);
 }
 
-/* Verse Detail Card (Tafsir & Perkata) */
+/* ==========================================================================
+   7. DETAIL AYAT & TERJEMAHAN PERKATA
+   ========================================================================== */
 .verse-detail-card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .verse-detail-header {
@@ -593,64 +735,75 @@ kbd {
 }
 
 .verse-badge-active {
-  font-size: 0.82rem;
+  background-color: var(--primary-subtle);
+  color: var(--primary);
   font-weight: 700;
-  color: var(--teal-400);
-  background-color: var(--teal-900);
-  padding: 3px 10px;
-  border-radius: 9999px;
-  border: 1px solid var(--teal-600);
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .verse-arabic-display {
   font-family: var(--font-arabic);
   font-size: 1.7rem;
   line-height: 2.2;
-  color: var(--text-primary);
-  margin-bottom: 10px;
+  color: var(--text-arabic);
+  margin-bottom: 12px;
+  text-align: right;
 }
 
 .verse-translation-display {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 14px;
 }
 
+/* Kosakata Perkata Interaktif */
 .word-by-word-container {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   direction: rtl;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 14px;
 }
 
 .wbw-chip {
-  background-color: var(--bg-card);
+  background-color: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
-  text-align: center;
-  min-width: 70px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 60px;
+}
+
+.wbw-chip:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-subtle);
 }
 
 .wbw-arabic {
   font-family: var(--font-arabic);
   font-size: 1.25rem;
-  color: var(--text-primary);
-  display: block;
+  color: var(--text-arabic);
+  line-height: 1.5;
 }
 
 .wbw-trans {
   font-size: 0.72rem;
-  color: var(--text-muted);
-  display: block;
+  color: var(--text-secondary);
   direction: ltr;
+  text-align: center;
 }
 
 /* ==========================================================================
-   5. SECTION 2: RADAR MUTASYABIHAT CARDS
+   8. SEKSI 2: RADAR MUTASYABIHAT
    ========================================================================== */
 .radar-container {
   display: flex;
@@ -660,9 +813,10 @@ kbd {
 
 .radar-header-card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .radar-title-group h2 {
@@ -673,7 +827,7 @@ kbd {
 }
 
 .radar-title-group p {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-secondary);
   margin-bottom: 16px;
 }
@@ -681,164 +835,177 @@ kbd {
 .radar-filter-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
 }
 
 .search-input-wrapper {
+  position: relative;
   flex: 1;
-  min-width: 250px;
+  min-width: 240px;
+}
+
+.search-svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
 }
 
 .search-input {
   width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
   background-color: var(--bg-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.88rem;
-  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  min-height: 44px;
+  transition: border-color var(--transition-fast);
 }
 
 .search-input:focus {
+  border-color: var(--primary);
   outline: none;
-  border-color: var(--teal-400);
 }
 
 .filter-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
-.filter-actions .btn.active {
-  background-color: var(--teal-600);
-  border-color: var(--teal-500);
-  color: #FFF;
-}
-
+/* Kartu Perbandingan Mutasyabihat */
 .radar-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .mutasyabihat-card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 18px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transition: border-color var(--transition-fast);
-}
-
-.mutasyabihat-card:hover {
-  border-color: #475569;
 }
 
 .m-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
 }
 
 .m-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--amber-500);
+  color: var(--text-primary);
 }
 
 .m-scope-badge {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
+  background-color: var(--accent-gold-subtle);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold-border);
   padding: 2px 8px;
-  border-radius: 9999px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
 }
 
 .m-pair-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 768px) {
   .m-pair-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 
 .m-verse-box {
-  background-color: var(--bg-card);
+  background-color: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .m-verse-header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--teal-400);
-  margin-bottom: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 .m-arabic {
   font-family: var(--font-arabic);
   font-size: 1.45rem;
   line-height: 2.1;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+  color: var(--text-arabic);
   direction: rtl;
+  text-align: right;
 }
 
+/* Kata Pembeda (Diff Highlight Anti-Slop) */
 .diff-highlight {
-  color: #F87171;
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: var(--diff-bg);
+  color: var(--diff-text);
+  border-bottom: 2px solid var(--diff-border);
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: 3px;
   font-weight: 700;
 }
 
 .m-next-words {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  border-top: 1px dashed var(--border-subtle);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
   padding-top: 8px;
-  margin-top: 6px;
+  line-height: 1.4;
 }
 
 .m-next-words strong {
-  color: var(--teal-400);
-  direction: rtl;
-  display: inline-block;
+  color: var(--text-primary);
   font-family: var(--font-arabic);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
 }
 
+/* Rumus Jembatan Ingatan */
 .m-memory-anchor-row {
-  background-color: #172554;
-  border: 1px solid #1E40AF;
-  border-radius: var(--radius-sm);
+  background-color: var(--accent-gold-subtle);
+  border: 1px solid var(--accent-gold-border);
+  border-radius: var(--radius-md);
   padding: 10px 14px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
 
 .anchor-text {
-  font-size: 0.82rem;
-  color: #BFDBFE;
+  font-size: 0.83rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.anchor-text strong {
+  color: var(--accent-gold);
 }
 
 /* ==========================================================================
-   6. SECTION 3: DRILL SAMBUNG AYAT
+   9. SEKSI 3: MODE DRILL SAMBUNG AYAT
    ========================================================================== */
 .drill-container {
   max-width: 720px;
@@ -847,9 +1014,10 @@ kbd {
 
 .drill-card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
   padding: 24px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -859,110 +1027,125 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
 }
 
-.drill-badge {
-  font-size: 0.78rem;
+.drill-tag {
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--teal-400);
-  background-color: var(--teal-900);
-  padding: 4px 10px;
-  border-radius: 9999px;
-  border: 1px solid var(--teal-600);
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .drill-score {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 
 .drill-question-box {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 20px;
   text-align: center;
-}
-
-.drill-prompt-info {
-  font-size: 0.82rem;
-  color: var(--amber-500);
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.drill-prompt-arabic {
-  font-family: var(--font-arabic);
-  font-size: 1.9rem;
-  line-height: 2.2;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-}
-
-.drill-question-label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.drill-options-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.drill-option-btn {
-  background-color: var(--bg-surface);
-  border: 2px solid var(--border-subtle);
+.drill-prompt-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.drill-prompt-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.75rem;
+  line-height: 2.3;
+  color: var(--text-arabic);
+  padding: 12px 16px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px 20px;
+}
+
+.drill-question-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drill-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.drill-option-btn {
+  background-color: var(--bg-card);
+  border: 1.5px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   transition: all var(--transition-fast);
-  min-height: 56px;
+  min-height: 60px;
+  text-align: right;
 }
 
 .drill-option-btn:hover {
-  border-color: var(--teal-500);
-  background-color: var(--bg-card);
+  border-color: var(--primary);
+  background-color: var(--primary-subtle);
 }
 
 .option-tag {
-  background-color: var(--bg-card);
-  color: var(--teal-400);
-  font-size: 0.82rem;
-  font-weight: 700;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  border: 1px solid var(--border-subtle);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .option-arabic {
   font-family: var(--font-arabic);
-  font-size: 1.45rem;
-  color: var(--text-primary);
+  font-size: 1.35rem;
+  color: var(--text-arabic);
+  line-height: 1.8;
 }
 
+/* Feedback Drill */
 .drill-feedback {
   border-radius: var(--radius-md);
   padding: 16px;
-  animation: slideDown 250ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .drill-feedback.correct {
-  background-color: rgba(6, 78, 59, 0.4);
-  border: 1px solid #059669;
+  background-color: var(--success-bg);
+  border: 1px solid var(--success-border);
+}
+
+.drill-feedback.correct .feedback-title {
+  color: var(--success-text);
 }
 
 .drill-feedback.wrong {
-  background-color: rgba(127, 29, 29, 0.4);
-  border: 1px solid #DC2626;
+  background-color: var(--alert-bg);
+  border: 1px solid var(--alert-border);
+}
+
+.drill-feedback.wrong .feedback-title {
+  color: var(--alert-text);
 }
 
 .drill-feedback.hidden {
@@ -970,105 +1153,115 @@ kbd {
 }
 
 .feedback-title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 4px;
 }
 
-.drill-feedback.correct .feedback-title { color: #6EE7B7; }
-.drill-feedback.wrong .feedback-title { color: #FCA5A5; }
-
 .feedback-explanation {
-  font-size: 0.85rem;
-  color: #E2E8F0;
-  margin-bottom: 12px;
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  line-height: 1.5;
 }
 
 .memory-anchor-box {
-  background-color: rgba(0, 0, 0, 0.25);
-  padding: 8px 12px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  color: #BAE6FD;
-  margin-bottom: 14px;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  color: var(--text-primary);
 }
 
 .feedback-action {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 /* ==========================================================================
-   7. MODAL DIALOG (MEMORY ANCHOR)
+   10. MODAL DIALOG
    ========================================================================== */
 .app-modal {
   margin: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  max-width: 480px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  max-width: 520px;
   width: 90%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
 .app-modal::backdrop {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
 }
 
 .modal-content {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
   padding: 20px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
 }
 
 .modal-header h3 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
-.btn-close {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 4px 8px;
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .modal-tip {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  line-height: 1.4;
 }
 
 .modal-body textarea {
   width: 100%;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
   padding: 10px 12px;
-  font-family: var(--font-sans);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
   font-size: 0.85rem;
+  line-height: 1.5;
   resize: vertical;
 }
 
 .modal-body textarea:focus {
   outline: none;
-  border-color: var(--teal-400);
+  border-color: var(--primary);
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+/* ==========================================================================
+   11. UTILITAS & RESPONSIVITAS
+   ========================================================================== */
+.hidden {
+  display: none !important;
 }
 
 .sr-only {
@@ -1079,5 +1272,38 @@ kbd {
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
-  border: 0;
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@media (max-width: 640px) {
+  .header-container {
+    flex-wrap: wrap;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  .mushaf-page-card {
+    padding: 14px 12px;
+  }
+
+  .mushaf-word {
+    font-size: 1.35rem;
+    padding: 0 2px;
+  }
+
+  .surah-header-banner {
+    font-size: 1.15rem;
+  }
+
+  .mushaf-line.bismillah-line {
+    font-size: 1.25rem;
+  }
 }
