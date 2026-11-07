@@ -1,14 +1,9 @@
 // whisper_voice_service.dart
 // =============================================================================
-// [OPSI 2 + FFI NATIVE BINDINGS] Modul Perekam Mikrofon Real-Time (PCM 16kHz + VAD),
+// [OPSI 2 + FFI NATIVE BINDINGS + ANDROID SPEECH RECOGNIZER]
+// Modul Perekam Mikrofon Real-Time (PCM 16kHz + VAD + Android SpeechRecognizer ar-SA),
 // Pengunduh Otomatis Model AI Whisper Al-Qur'an, dan Binding Dart FFI Penuh ke
 // `whisper_flutter_bridge.cpp` (`libwhisper.so`, `whisper.dll`, `libwhisper.dylib`).
-//
-// Dependensi pubspec.yaml:
-//   ffi: ^2.1.3
-//   record: ^5.1.2
-//   path: ^1.9.0
-//   path_provider: ^2.1.4
 // =============================================================================
 
 import 'dart:async';
@@ -31,7 +26,6 @@ import 'quran_hifz_repository.dart';
 // 1. DEFINISI TYPEDEF C-ABI UNTUK `whisper_flutter_bridge.cpp`
 // =============================================================================
 
-// int64_t whisper_bridge_init(const char* model_path)
 typedef _WhisperBridgeInitNative = ffi.Int64 Function(
   ffi.Pointer<Utf8> modelPath,
 );
@@ -39,7 +33,6 @@ typedef _WhisperBridgeInitDart = int Function(
   ffi.Pointer<Utf8> modelPath,
 );
 
-// const char* whisper_bridge_transcribe_arabic(int64_t ctx, const float* pcm, int32_t n_samples, int32_t n_threads)
 typedef _WhisperBridgeTranscribeNative = ffi.Pointer<Utf8> Function(
   ffi.Int64 ctxHandle,
   ffi.Pointer<ffi.Float> pcmF32,
@@ -53,7 +46,6 @@ typedef _WhisperBridgeTranscribeDart = ffi.Pointer<Utf8> Function(
   int nThreads,
 );
 
-// void whisper_bridge_free_string(const char* str_ptr)
 typedef _WhisperBridgeFreeStringNative = ffi.Void Function(
   ffi.Pointer<Utf8> strPtr,
 );
@@ -61,7 +53,6 @@ typedef _WhisperBridgeFreeStringDart = void Function(
   ffi.Pointer<Utf8> strPtr,
 );
 
-// void whisper_bridge_free(int64_t ctx_handle)
 typedef _WhisperBridgeFreeNative = ffi.Void Function(
   ffi.Int64 ctxHandle,
 );
@@ -366,11 +357,6 @@ abstract class WhisperTranscriberEngine {
   Future<void> dispose();
 }
 
-/// Implementasi Penuh Dart FFI yang memanggil simbol C di `whisper_flutter_bridge.cpp`:
-/// - `whisper_bridge_init`
-/// - `whisper_bridge_transcribe_arabic` (dijalankan di background Isolate agar UI 60fps tetap mulus)
-/// - `whisper_bridge_free_string`
-/// - `whisper_bridge_free`
 class WhisperCppFfiEngine implements WhisperTranscriberEngine {
   final String modelFilePath;
   final int threads;
@@ -409,7 +395,6 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
     final libName = _resolveDynamicLibraryName();
     final pathToLoad = modelFilePath;
 
-    // Inisialisasi model di background Isolate agar UI tidak membeku saat memuat file ~145MB
     _ctxHandle = await Isolate.run<int>(() {
       final dylib = ffi.DynamicLibrary.open(libName);
       final initFn = dylib.lookupFunction<_WhisperBridgeInitNative,
@@ -441,7 +426,6 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
     final handle = _ctxHandle;
     final threadCount = threads;
 
-    // Jalankan inferensi C++ `whisper_bridge_transcribe_arabic` di background Isolate
     return Isolate.run<String>(() {
       final dylib = ffi.DynamicLibrary.open(libName);
       final transcribeFn = dylib.lookupFunction<_WhisperBridgeTranscribeNative,
@@ -591,6 +575,8 @@ class CloudWhisperApiEngine implements WhisperTranscriberEngine {
 // =============================================================================
 
 class WhisperVoiceHifzController extends ChangeNotifier {
+  static const MethodChannel _nativeChannel = MethodChannel('com.qurantarteelhifz/installer');
+
   final QuranHifzRepository repository;
   final QuranMurattalAudioService? murattalAudioService;
   final WhisperModelDownloadManager modelDownloadManager;
@@ -598,6 +584,9 @@ class WhisperVoiceHifzController extends ChangeNotifier {
 
   WhisperBackendMode _backendMode;
   WhisperTranscriberEngine? transcriberEngine;
+
+  /// Callback opsional agar tab Koreksi Bacaan dapat menerima transkrip suara langsung.
+  void Function(String transcript)? onLiveTranscriptCallback;
 
   Verse? _currentVerse;
   List<DualPathCandidate> _dualPathCandidates = const [];
@@ -627,7 +616,41 @@ class WhisperVoiceHifzController extends ChangeNotifier {
   })  : _backendMode = backendMode,
         modelDownloadManager =
             modelDownloadManager ?? WhisperModelDownloadManager(),
-        micStreamService = micStreamService ?? CrossPlatformMicStreamService();
+        micStreamService = micStreamService ?? CrossPlatformMicStreamService() {
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      _nativeChannel.setMethodCallHandler(_handleNativeVoiceCalls);
+    }
+  }
+
+  Future<dynamic> _handleNativeVoiceCalls(MethodCall call) async {
+    switch (call.method) {
+      case 'onVoiceTranscript':
+        final args = call.arguments;
+        String text = '';
+        if (args is Map) {
+          text = (args['text'] ?? '').toString().trim();
+        } else if (args is String) {
+          text = args.trim();
+        }
+        if (text.isNotEmpty) {
+          onLiveTranscriptCallback?.call(text);
+          await processIncomingTranscript(text);
+        }
+        break;
+      case 'onVoiceRms':
+        final rms = (call.arguments as num?)?.toDouble() ?? 0.0;
+        _state = _state.copyWith(micRmsLevel: rms.clamp(0.0, 1.0));
+        notifyListeners();
+        break;
+      case 'onVoiceStatus':
+        final msg = call.arguments?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          _state = _state.copyWith(statusMessage: msg);
+          notifyListeners();
+        }
+        break;
+    }
+  }
 
   void setBackendMode(WhisperBackendMode mode) {
     _backendMode = mode;
@@ -688,10 +711,17 @@ class WhisperVoiceHifzController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startListening({Stream<Uint8List>? liveMicPcmStream}) async {
+  Future<void> startListening({
+    Stream<Uint8List>? liveMicPcmStream,
+    bool resetWordsOnStart = false,
+  }) async {
     if (_currentVerse == null) return;
     if (transcriberEngine != null) {
       await transcriberEngine!.initialize();
+    }
+
+    if (resetWordsOnStart && _state.revealedWordPosition >= _state.totalWordsInVerse) {
+      _state = _state.copyWith(revealedWordPosition: 0);
     }
 
     if (liveMicPcmStream != null) {
@@ -706,11 +736,21 @@ class WhisperVoiceHifzController extends ChangeNotifier {
             final transcript =
                 await transcriberEngine!.transcribePcm16kHz(windowBytes);
             if (transcript.isNotEmpty) {
+              onLiveTranscriptCallback?.call(transcript);
               await processIncomingTranscript(transcript);
             }
           }
         },
       );
+    } else if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      // Gunakan perekam & pengenal suara native platform (Android SpeechRecognizer ar-SA)
+      try {
+        if (Platform.isAndroid) {
+          await _nativeChannel.invokeMethod('startVoiceRecognition');
+        }
+      } catch (e) {
+        debugPrint('[WhisperVoiceHifzController] Gagal memulai mikrofon native: $e');
+      }
     }
 
     _state = _state.copyWith(
@@ -725,6 +765,13 @@ class WhisperVoiceHifzController extends ChangeNotifier {
   Future<void> stopListening() async {
     _simulationTimer?.cancel();
     await micStreamService.stop();
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      try {
+        if (Platform.isAndroid) {
+          await _nativeChannel.invokeMethod('stopVoiceRecognition');
+        }
+      } catch (_) {}
+    }
     _state = _state.copyWith(
       isListening: false,
       micRmsLevel: 0.0,
@@ -787,7 +834,7 @@ class WhisperVoiceHifzController extends ChangeNotifier {
       revealedWordPosition: matchedPos,
       lastTranscript: transcript,
       evaluationResult: evalResult,
-      statusMessage: evalResult?.warningMessage,
+      statusMessage: evalResult?.warningMessage ?? 'Terdengar: $transcript',
     );
     notifyListeners();
   }

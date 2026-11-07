@@ -199,8 +199,25 @@
           </div>
         </div>
 
+        <!-- Toolbar Zoom In / Zoom Out & Mode Selembar Mushaf Madinah -->
+        <div class="mushaf-zoom-toolbar">
+          <div class="zoom-label-group">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+            <span>Tampilan Lembar Mushaf Madinah</span>
+          </div>
+          <div class="zoom-controls-group">
+            <button type="button" id="btn-toggle-single-sheet" class="btn btn-secondary btn-xs active" title="Tampilkan proporsional 1 lembar utuh seperti cetakan Mushaf Madinah">Selembar Mushaf</button>
+            <button type="button" id="btn-zoom-out" class="btn btn-ghost btn-xs" aria-label="Perkecil Mushaf (Zoom Out)" title="Perkecil Mushaf">−</button>
+            <button type="button" id="btn-zoom-reset" class="zoom-pct-badge" title="Klik untuk kembali ke 100%">100%</button>
+            <button type="button" id="btn-zoom-in" class="btn btn-ghost btn-xs" aria-label="Perbesar Mushaf (Zoom In)" title="Perbesar Mushaf">+</button>
+          </div>
+        </div>
+
         <!-- Lembaran Mushaf Madinah 15 Baris -->
-        <article class="mushaf-page-card" id="mushaf-page-container">
+        <article class="mushaf-page-card single-sheet-mode" id="mushaf-page-container">
           <!-- Bingkai Ornamen Luar & Header Halaman -->
           <header class="mushaf-page-header">
             <span class="juz-label" id="mushaf-juz-label">الجزء ٣٠</span>

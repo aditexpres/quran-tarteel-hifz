@@ -1,8 +1,8 @@
 // lib/marked_mushaf_view.dart
 // ==============================================================================
 // Mode Tampilan: Mushaf Bertanda Mutasyabihat (Anti-Tertukar)
-// Membaca Al-Qur'an secara full, dengan penanda warna khusus pada ayat mutasyabihat.
-// Ketika disentuh/diklik, menyorot ayat dan menampilkan perbandingan ayat kembarannya.
+// Membaca Al-Qur'an secara full dengan fitur Zoom In/Out & Pinch-to-Zoom,
+// dengan penanda warna khusus pada ayat mutasyabihat.
 // ==============================================================================
 
 import 'package:flutter/material.dart';
@@ -30,6 +30,29 @@ class _MarkedMushafMutasyabihatViewState
     extends State<MarkedMushafMutasyabihatView> {
   Verse? _selectedVerse;
   MutasyabihatComparisonPair? _selectedPair;
+  double _zoomScale = 1.0;
+  final TransformationController _transformController = TransformationController();
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  void _updateZoom(double newScale) {
+    final clamped = newScale.clamp(0.60, 2.50);
+    setState(() {
+      _zoomScale = clamped;
+      _transformController.value = Matrix4.identity()..scale(clamped);
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomScale = 1.0;
+      _transformController.value = Matrix4.identity();
+    });
+  }
 
   MutasyabihatComparisonPair? _findPairForVerse(Verse verse) {
     for (final pair in widget.pairs) {
@@ -58,12 +81,15 @@ class _MarkedMushafMutasyabihatViewState
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final firstVerse = widget.verses.first;
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final mutedColor = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+    final pageBg = isDark ? const Color(0xFF181D1A) : const Color(0xFFFCFAF6);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Banner Penjelasan Mode
+          // Banner Penjelasan Mode + Kontrol Zoom In / Zoom Out
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -77,39 +103,85 @@ class _MarkedMushafMutasyabihatViewState
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF9B7A38).withOpacity(0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: Color(0xFF9B7A38),
-                    size: 20,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9B7A38).withOpacity(0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFF9B7A38),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mode Mushaf Bertanda Mutasyabihat',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Ayat dengan kembaran mutasyabihat diberi aksen emas. Klik/sentuh ayat bertanda untuk meneliti perbandingannya.',
+                            style: TextStyle(fontSize: 11, height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mode Mushaf Bertanda Mutasyabihat',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Perkecil Mushaf (Zoom Out)',
+                      onPressed: () => _updateZoom(_zoomScale - 0.15),
+                      icon: Icon(Icons.remove_circle_outline_rounded, size: 20, color: mutedColor),
+                    ),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: _resetZoom,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF242B28) : const Color(0xFFF2ECE1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${(_zoomScale * 100).round()}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Ayat dengan kembaran mutasyabihat diberi aksen emas. Klik atau ketuk ayat bertanda untuk meneliti perbandingannya.',
-                        style: TextStyle(fontSize: 11, height: 1.3),
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Perbesar Mushaf (Zoom In)',
+                      onPressed: () => _updateZoom(_zoomScale + 0.15),
+                      icon: Icon(Icons.add_circle_outline_rounded, size: 20, color: mutedColor),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -117,177 +189,191 @@ class _MarkedMushafMutasyabihatViewState
 
           const SizedBox(height: 16),
 
-          // Lembaran Mushaf Madinah Penuh
-          Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF181D1A)
-                  : const Color(0xFFFCFAF6),
-              border: Border.all(
-                color: const Color(0xFFC8AA76),
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          // Lembaran Mushaf Madinah Penuh (Mendukung Cubit Layar / Pinch-to-Zoom)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: InteractiveViewer(
+              transformationController: _transformController,
+              minScale: 0.60,
+              maxScale: 2.50,
+              panEnabled: true,
+              scaleEnabled: true,
+              onInteractionEnd: (_) {
+                final currentScale = _transformController.value.getMaxScaleOnAxis();
+                if ((currentScale - _zoomScale).abs() > 0.02) {
+                  setState(() => _zoomScale = currentScale.clamp(0.60, 2.50));
+                }
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: pageBg,
+                  border: Border.all(
+                    color: const Color(0xFFC8AA76),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Header Lembaran Mushaf
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   children: [
-                    Text(
-                      'الجزء ${firstVerse.juzNumber}',
-                      style: const TextStyle(
-                        fontFamily: 'Amiri',
-                        fontSize: 16,
-                        color: Color(0xFF9B7A38),
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Header Lembaran Mushaf
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'الجزء ${firstVerse.juzNumber}',
+                          style: TextStyle(
+                            fontFamily: 'Amiri',
+                            fontSize: 16 * _zoomScale,
+                            color: const Color(0xFF9B7A38),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'سُورَةُ ${firstVerse.surahNameLatin ?? ''}',
+                          style: TextStyle(
+                            fontFamily: 'Amiri',
+                            fontSize: 20 * _zoomScale,
+                            color: primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${firstVerse.pageNumber}',
+                          style: TextStyle(
+                            fontFamily: 'Amiri',
+                            fontSize: 16 * _zoomScale,
+                            color: const Color(0xFF9B7A38),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'سُورَةُ ${firstVerse.surahNameLatin ?? ''}',
-                      style: const TextStyle(
-                        fontFamily: 'Amiri',
-                        fontSize: 20,
-                        color: Color(0xFF165B33),
-                        fontWeight: FontWeight.bold,
+                    const Divider(height: 20, color: Color(0xFFC8AA76)),
+
+                    // Basmalah (kecuali At-Taubah)
+                    if (firstVerse.surahId != 9) ...[
+                      Text(
+                        'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Amiri',
+                          fontSize: 22 * _zoomScale,
+                          height: 1.8,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${firstVerse.pageNumber}',
-                      style: const TextStyle(
-                        fontFamily: 'Amiri',
-                        fontSize: 16,
-                        color: Color(0xFF9B7A38),
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Teks Ayat Mengalir Kontinyu
+                    Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 10,
+                        alignment: WrapAlignment.start,
+                        children: widget.verses.map((v) {
+                          final pair = _findPairForVerse(v);
+                          final isMarked = pair != null;
+                          final isSelected = _selectedVerse?.id == v.id;
+                          final isSide1 = pair != null &&
+                              pair.surahId1 == v.surahId &&
+                              pair.verseNumber1 == v.verseNumber;
+                          final twinLabel = pair == null
+                              ? ''
+                              : (isSide1
+                                  ? '${pair.surahName2}:${pair.verseNumber2}'
+                                  : '${pair.surahName1}:${pair.verseNumber1}');
+
+                          return MouseRegion(
+                            cursor: isMarked ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                            onEnter: isMarked ? (_) => _selectMarkedVerse(v, pair) : null,
+                            child: GestureDetector(
+                              onTap: isMarked ? () => _selectMarkedVerse(v, pair) : null,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 140),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMarked ? 10 : 4,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? (isDark ? const Color(0xFF3E3018) : const Color(0xFFF6E7C8))
+                                      : isMarked
+                                          ? (isDark ? const Color(0xFF2B2418) : const Color(0xFFFBF5E8))
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: isMarked
+                                      ? Border(
+                                          bottom: BorderSide(
+                                            color: const Color(0xFF9B7A38),
+                                            width: isSelected ? 2.5 : 2.0,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        v.textUthmani,
+                                        style: TextStyle(
+                                          fontSize: 23 * _zoomScale,
+                                          height: 1.9,
+                                          color: isDark
+                                              ? const Color(0xFFF3F1EC)
+                                              : const Color(0xFF141816),
+                                          fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isMarked) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF9B7A38),
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          '⇄ $twinLabel',
+                                          textDirection: TextDirection.ltr,
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '۝${_toArabicDigits(v.verseNumber)}',
+                                      style: TextStyle(
+                                        fontSize: 18 * _zoomScale,
+                                        color: const Color(0xFF9B7A38),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 20, color: Color(0xFFC8AA76)),
-
-                // Basmalah (kecuali At-Taubah)
-                if (firstVerse.surahId != 9) ...[
-                  const Text(
-                    'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Amiri',
-                      fontSize: 22,
-                      height: 1.8,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Teks Ayat Mengalir Kontinyu (Mendukung Hover Kursor & Klik/Sentuhan seperti di Web)
-                Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 10,
-                    alignment: WrapAlignment.start,
-                    children: widget.verses.map((v) {
-                      final pair = _findPairForVerse(v);
-                      final isMarked = pair != null;
-                      final isSelected = _selectedVerse?.id == v.id;
-                      final isSide1 = pair != null &&
-                          pair.surahId1 == v.surahId &&
-                          pair.verseNumber1 == v.verseNumber;
-                      final twinLabel = pair == null
-                          ? ''
-                          : (isSide1
-                              ? '${pair.surahName2}:${pair.verseNumber2}'
-                              : '${pair.surahName1}:${pair.verseNumber1}');
-
-                      return MouseRegion(
-                        cursor: isMarked ? SystemMouseCursors.click : SystemMouseCursors.basic,
-                        onEnter: isMarked ? (_) => _selectMarkedVerse(v, pair) : null,
-                        child: GestureDetector(
-                          onTap: isMarked ? () => _selectMarkedVerse(v, pair) : null,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isMarked ? 10 : 4,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? (isDark ? const Color(0xFF3E3018) : const Color(0xFFF6E7C8))
-                                  : isMarked
-                                      ? (isDark ? const Color(0xFF2B2418) : const Color(0xFFFBF5E8))
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              border: isMarked
-                                  ? Border(
-                                      bottom: BorderSide(
-                                        color: const Color(0xFF9B7A38),
-                                        width: isSelected ? 2.5 : 2.0,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    v.textUthmani,
-                                    style: TextStyle(
-                                      fontSize: 23,
-                                      height: 1.9,
-                                      color: isDark
-                                          ? const Color(0xFFF3F1EC)
-                                          : const Color(0xFF141816),
-                                      fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                if (isMarked) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF9B7A38),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      '⇄ $twinLabel',
-                                      textDirection: TextDirection.ltr,
-                                      style: const TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(width: 4),
-                                Text(
-                                  '۝${_toArabicDigits(v.verseNumber)}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Color(0xFF9B7A38),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
 

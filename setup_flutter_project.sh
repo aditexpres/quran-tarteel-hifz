@@ -3,6 +3,7 @@
 # setup_flutter_project.sh
 # [OPSI 1] Skrip Otomasi Pembuatan Proyek Flutter Lintas Platform
 # (Android, Windows, macOS), Konfigurasi Izin Mikrofon/Internet/Instalasi APK,
+# Pemutar Audio Native (MediaPlayer), Pengenal Suara Arab Real-Time (SpeechRecognizer),
 # Pemasangan Keystore Deterministik (Anti-Conflict Update), Build Database,
 # Penyalinan Unit Test (`test/quran_hifz_test.dart`), & Workflow CI/CD GitHub Actions.
 # ==============================================================================
@@ -60,21 +61,33 @@ if [ -f "$SCRIPT_DIR/release_build.yml" ]; then
 fi
 
 echo "=================================================================="
-echo " 3. Mengonfigurasi Izin Mikrofon, Internet & Pemasang APK (Android & macOS)"
+echo " 3. Mengonfigurasi Izin Mikrofon, Audio, & Pemasang APK (Android & macOS)"
 echo "=================================================================="
 ANDROID_MANIFEST="$PROJECT_NAME/android/app/src/main/AndroidManifest.xml"
 cat > "$ANDROID_MANIFEST" << 'EOF'
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Izin Wajib untuk Voice Hifz (Mikrofon PCM 16kHz), Unduh Model/Audio, & In-App APK Update -->
+    <!-- Izin Wajib untuk Voice Hifz (Mikrofon), Audio Murattal, & In-App APK Update -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Package Visibility Queries untuk Android 11+ (SpeechRecognizer & Browser Intent) -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:label="Qur'an Tarteel Hifz"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -103,22 +116,34 @@ cat > "$ANDROID_MANIFEST" << 'EOF'
 </manifest>
 EOF
 
-# Tulis MainActivity.kt dengan MethodChannel In-App APK Installer & Browser Intent
+# Tulis MainActivity.kt dengan MethodChannel:
+# 1. In-App APK Installer & Browser Intent
+# 2. Native Android MediaPlayer untuk Audio Murattal Syaikh
+# 3. Native Android SpeechRecognizer (ar-SA) + Runtime Mic Permission untuk Tasmi' & Koreksi Bacaan
 KOTLIN_DIR="$PROJECT_NAME/android/app/src/main/kotlin/com/example/quran_tarteel_hifz"
 mkdir -p "$KOTLIN_DIR"
 cat > "$KOTLIN_DIR/MainActivity.kt" << 'EOF'
 package com.example.quran_tarteel_hifz
 
+import android.Manifest
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.database.MatrixCursor
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -126,10 +151,18 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.qurantarteelhifz/installer"
+    private var methodChannel: MethodChannel? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isContinuousListening: Boolean = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel = channel
+
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "openUrl" -> {
                     val url = call.argument<String>("url")
@@ -184,9 +217,204 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_PATH", "filePath is null", null)
                     }
                 }
+                "playAudio" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath != null) {
+                        try {
+                            stopMediaPlayer()
+                            mediaPlayer = MediaPlayer().apply {
+                                setDataSource(filePath)
+                                prepare()
+                                start()
+                                setOnCompletionListener {
+                                    stopMediaPlayer()
+                                }
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("AUDIO_ERR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_PATH", "filePath is null", null)
+                    }
+                }
+                "stopAudio" -> {
+                    stopMediaPlayer()
+                    result.success(true)
+                }
+                "isAudioPlaying" -> {
+                    val playing = try {
+                        mediaPlayer?.isPlaying == true
+                    } catch (_: Exception) {
+                        false
+                    }
+                    result.success(playing)
+                }
+                "startVoiceRecognition" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            isContinuousListening = true
+                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+                    }
+                    isContinuousListening = true
+                    startSpeechRecognizerInternal()
+                    result.success(true)
+                }
+                "stopVoiceRecognition" -> {
+                    isContinuousListening = false
+                    stopSpeechRecognizerInternal()
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun stopMediaPlayer() {
+        try {
+            mediaPlayer?.let {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+                it.release()
+            }
+        } catch (_: Exception) {
+        } finally {
+            mediaPlayer = null
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (isContinuousListening) {
+                    startSpeechRecognizerInternal()
+                }
+            } else {
+                isContinuousListening = false
+                methodChannel?.invokeMethod(
+                    "onVoiceStatus",
+                    "Izin mikrofon belum diberikan. Mohon izinkan akses mikrofon agar aplikasi dapat menyimak bacaan Anda."
+                )
+            }
+        }
+    }
+
+    private fun startSpeechRecognizerInternal() {
+        mainHandler.post {
+            try {
+                speechRecognizer?.destroy()
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+                    setRecognitionListener(object : RecognitionListener {
+                        override fun onReadyForSpeech(params: Bundle?) {
+                            methodChannel?.invokeMethod(
+                                "onVoiceStatus",
+                                "Mikrofon Aktif: Silakan mulai membaca ayat Al-Qur'an..."
+                            )
+                        }
+
+                        override fun onBeginningOfSpeech() {}
+
+                        override fun onRmsChanged(rmsdB: Float) {
+                            val normalized = ((rmsdB + 2.0f) / 12.0f).coerceIn(0.0f, 1.0f).toDouble()
+                            methodChannel?.invokeMethod("onVoiceRms", normalized)
+                        }
+
+                        override fun onBufferReceived(buffer: ByteArray?) {}
+
+                        override fun onEndOfSpeech() {}
+
+                        override fun onError(error: Int) {
+                            if (isContinuousListening) {
+                                mainHandler.postDelayed({
+                                    if (isContinuousListening) {
+                                        restartListeningCycle()
+                                    }
+                                }, 250)
+                            }
+                        }
+
+                        override fun onResults(results: Bundle?) {
+                            val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            val text = matches?.firstOrNull() ?: ""
+                            if (text.isNotEmpty()) {
+                                methodChannel?.invokeMethod(
+                                    "onVoiceTranscript",
+                                    mapOf("text" to text, "isFinal" to true)
+                                )
+                            }
+                            if (isContinuousListening) {
+                                mainHandler.postDelayed({
+                                    if (isContinuousListening) {
+                                        restartListeningCycle()
+                                    }
+                                }, 200)
+                            }
+                        }
+
+                        override fun onPartialResults(partialResults: Bundle?) {
+                            val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            val text = matches?.firstOrNull() ?: ""
+                            if (text.isNotEmpty()) {
+                                methodChannel?.invokeMethod(
+                                    "onVoiceTranscript",
+                                    mapOf("text" to text, "isFinal" to false)
+                                )
+                            }
+                        }
+
+                        override fun onEvent(eventType: Int, params: Bundle?) {}
+                    })
+                }
+                restartListeningCycle()
+            } catch (e: Exception) {
+                methodChannel?.invokeMethod(
+                    "onVoiceStatus",
+                    "Gagal mengaktifkan pengenal suara: ${e.message}"
+                )
+            }
+        }
+    }
+
+    private fun restartListeningCycle() {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-SA")
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            }
+            speechRecognizer?.startListening(intent)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun stopSpeechRecognizerInternal() {
+        mainHandler.post {
+            try {
+                speechRecognizer?.stopListening()
+                speechRecognizer?.cancel()
+                speechRecognizer?.destroy()
+            } catch (_: Exception) {
+            } finally {
+                speechRecognizer = null
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        stopMediaPlayer()
+        stopSpeechRecognizerInternal()
+        super.onDestroy()
     }
 }
 

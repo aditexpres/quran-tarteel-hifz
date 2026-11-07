@@ -1324,6 +1324,32 @@
       }
     });
 
+    // Mushaf Zoom In / Zoom Out & Single-Sheet Mode
+    let mushafZoom = 1.0;
+    const mushafCard = document.getElementById('mushaf-page-container');
+    const btnZoomIn = document.getElementById('btn-zoom-in');
+    const btnZoomOut = document.getElementById('btn-zoom-out');
+    const btnZoomReset = document.getElementById('btn-zoom-reset');
+    const btnSingleSheet = document.getElementById('btn-toggle-single-sheet');
+
+    function applyMushafZoom(newScale) {
+      mushafZoom = Math.min(2.2, Math.max(0.65, newScale));
+      if (btnZoomReset) btnZoomReset.textContent = `${Math.round(mushafZoom * 100)}%`;
+      if (mushafCard) {
+        mushafCard.style.zoom = mushafZoom;
+      }
+    }
+
+    if (btnZoomIn) btnZoomIn.addEventListener('click', () => applyMushafZoom(mushafZoom + 0.15));
+    if (btnZoomOut) btnZoomOut.addEventListener('click', () => applyMushafZoom(mushafZoom - 0.15));
+    if (btnZoomReset) btnZoomReset.addEventListener('click', () => applyMushafZoom(1.0));
+    if (btnSingleSheet && mushafCard) {
+      btnSingleSheet.addEventListener('click', () => {
+        const active = mushafCard.classList.toggle('single-sheet-mode');
+        btnSingleSheet.classList.toggle('active', active);
+      });
+    }
+
     // Page navigation
     DOM.btnPrevPage.addEventListener('click', () => {
       if (state.activePageNumber > 582) {

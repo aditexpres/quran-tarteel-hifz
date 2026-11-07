@@ -1,31 +1,97 @@
 // mushaf_15line_and_audio.dart
 // =============================================================================
-// [OPSI 3] Modul Tampilan Mushaf Standar Madinah (15 Baris) & Audio Murattal Koreksi
-// untuk Aplikasi Qur'an Tarteel Lintas Platform (Android, Windows, macOS).
-//
-// Fitur Utama:
-// 1. Mushaf15LinePageWidget:
-//    - Menyusun kata demi kata dari daftar ayat pada satu halaman Mushaf (1-604)
-//      ke dalam tepat 15 baris proporsional ala Mushaf Madinah (QUL Tarteel).
-//    - Mendukung penuh fitur Hide/Peek Verse (efek blur perkata yang terbuka
-//      saat dibaca atau saat menekan tombol Spasi/Peek) langsung di atas halaman Mushaf.
-//    - Menampilkan bingkai ornamen kepala Surah, البسملة, dan simbol akhir ayat (۝).
-// 2. QuranMurattalAudioService & MurattalPlayerBar:
-//    - Memutar audio murattal per ayat dari CDN EveryAyah / Quran.com API v4
-//      dengan pilihan 4 Qari utama (Alafasy, Al-Husary Muallim, Abdul Basit, Al-Minshawi).
-//    - Fitur "Auto-Correction on Trap Jump": Otomatis memutar bunyi ayat lanjutan
-//      yang BENAR ketika pengguna terdeteksi melompat ke surah lain yang mirip.
-//    - Fitur Loop A-B (Ulangi Ayat Transisi 3x/5x) untuk melatih bagian Mutasyabihat.
-//
-// Dependensi pubspec.yaml:
-//   just_audio: ^0.9.39
+// [OPSI 3] Modul Tampilan Mushaf Standar Madinah (15 Baris Proporsional Selembar
+// Penuh + Zoom In/Out & Pinch-to-Zoom) serta Pemutar Audio Murattal Native
+// Lintas Platform (Android MediaPlayer, Windows winmm.dll MCI, macOS afplay).
 // =============================================================================
 
 import 'dart:async';
+import 'dart:ffi' as ffi;
+import 'dart:io';
 import 'dart:ui';
+import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'quran_hifz_repository.dart';
+
+// =============================================================================
+// 0. WINDOWS NATIVE AUDIO BINDING (winmm.dll mciSendStringW)
+// =============================================================================
+
+typedef _MciSendStringWNative = ffi.Uint32 Function(
+  ffi.Pointer<Utf16> lpszCommand,
+  ffi.Pointer<Utf16> lpszReturnString,
+  ffi.Uint32 cchReturn,
+  ffi.IntPtr hwndCallback,
+);
+typedef _MciSendStringWDart = int Function(
+  ffi.Pointer<Utf16> lpszCommand,
+  ffi.Pointer<Utf16> lpszReturnString,
+  int cchReturn,
+  int hwndCallback,
+);
+
+class _WindowsMciAudioPlayer {
+  static _MciSendStringWDart? _mciSendStringW;
+
+  static _MciSendStringWDart? _getFn() {
+    if (!Platform.isWindows) return null;
+    if (_mciSendStringW != null) return _mciSendStringW;
+    try {
+      final winmm = ffi.DynamicLibrary.open('winmm.dll');
+      _mciSendStringW = winmm.lookupFunction<_MciSendStringWNative, _MciSendStringWDart>('mciSendStringW');
+      return _mciSendStringW;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static int sendCommand(String cmd) {
+    final fn = _getFn();
+    if (fn == null) return -1;
+    final cmdPtr = cmd.toNativeUtf16();
+    try {
+      return fn(cmdPtr, ffi.nullptr, 0, 0);
+    } finally {
+      calloc.free(cmdPtr);
+    }
+  }
+
+  static String queryStatus(String cmd) {
+    final fn = _getFn();
+    if (fn == null) return '';
+    final cmdPtr = cmd.toNativeUtf16();
+    final bufPtr = calloc<ffi.Uint16>(256).cast<Utf16>();
+    try {
+      final err = fn(cmdPtr, bufPtr, 255, 0);
+      if (err != 0) return '';
+      return bufPtr.toDartString().trim();
+    } finally {
+      calloc.free(cmdPtr);
+      calloc.free(bufPtr);
+    }
+  }
+
+  static void playFile(String filePath) {
+    sendCommand('close quran_murattal');
+    sendCommand('open "$filePath" type mpegvideo alias quran_murattal');
+    sendCommand('play quran_murattal from 0');
+  }
+
+  static void stop() {
+    sendCommand('stop quran_murattal');
+    sendCommand('close quran_murattal');
+  }
+
+  static bool isPlaying() {
+    final mode = queryStatus('status quran_murattal mode').toLowerCase();
+    return mode.contains('playing');
+  }
+}
 
 // =============================================================================
 // 1. MODEL & KATALOG QARI MURATTAL (EVERYAYAH / QURAN.COM CDN)
@@ -82,10 +148,12 @@ class QariCatalog {
 }
 
 // =============================================================================
-// 2. SERVICE PEMUTAR AUDIO MURATTAL & KOREKSI OTOMATIS TRAP JUMP
+// 2. SERVICE PEMUTAR AUDIO MURATTAL NATIVE & KOREKSI OTOMATIS TRAP JUMP
 // =============================================================================
 
 class QuranMurattalAudioService extends ChangeNotifier {
+  static const MethodChannel _nativeChannel = MethodChannel('com.qurantarteelhifz/installer');
+
   QariReciter _selectedReciter = QariCatalog.supportedReciters.first;
   bool _isPlaying = false;
   bool _autoPlayOnTrapJump = true;
@@ -94,11 +162,14 @@ class QuranMurattalAudioService extends ChangeNotifier {
 
   int? _playingSurahId;
   int? _playingVerseNumber;
+  String? _playingSurahName;
   String? _currentAudioUrl;
+  String? _cachedLocalFilePath;
   String? _statusCaption;
-  Timer? _playbackTimer;
+  Timer? _playbackPollTimer;
+  Process? _macosAudioProcess;
 
-  /// Callback opsional untuk menghubungkan ke instance `just_audio` (`AudioPlayer.setUrl`).
+  /// Callback opsional untuk pengujian unit test atau pemutar eksternal.
   final Future<void> Function(String url)? externalAudioUrlPlayer;
 
   QuranMurattalAudioService({this.externalAudioUrlPlayer});
@@ -127,6 +198,38 @@ class QuranMurattalAudioService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Mengunduh (atau mengambil dari cache lokal) file MP3 murattal ayat.
+  Future<String?> _downloadOrGetCachedMp3(String url, int surahId, int verseNumber) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final cacheDir = Directory(p.join(tempDir.path, 'murattal_cache'));
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
+      }
+      final s = surahId.toString().padLeft(3, '0');
+      final v = verseNumber.toString().padLeft(3, '0');
+      final fileName = '${_selectedReciter.id}_$s$v.mp3';
+      final file = File(p.join(cacheDir.path, fileName));
+
+      if (await file.exists() && await file.length() > 1024) {
+        return file.path;
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'QuranTarteelHifz-App'},
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+        return file.path;
+      }
+    } catch (e) {
+      debugPrint('[QuranMurattalAudioService] Gagal mengunduh MP3 murattal: $e');
+    }
+    return null;
+  }
+
   /// Memutar audio murattal untuk ayat tertentu (dengan dukungan pengulangan / loop hafalan).
   Future<void> playVerse({
     required int surahId,
@@ -134,25 +237,130 @@ class QuranMurattalAudioService extends ChangeNotifier {
     String? surahName,
     String? customCaption,
   }) async {
-    _playbackTimer?.cancel();
+    _stopNativePlaybackOnly();
     final url = _selectedReciter.getVerseAudioUrl(surahId, verseNumber);
 
     _isPlaying = true;
     _playingSurahId = surahId;
     _playingVerseNumber = verseNumber;
+    _playingSurahName = surahName;
     _currentAudioUrl = url;
     _currentRepeatIteration = 1;
+    _statusCaption = customCaption ??
+        'Memuat audio QS. ${surahName ?? surahId}: $verseNumber • ${_selectedReciter.name}...';
+    notifyListeners();
+
+    // Jika sedang dijalankan di dalam unit test yang tidak memiliki platform channel/audio nyata
+    if (externalAudioUrlPlayer != null) {
+      await externalAudioUrlPlayer!(url);
+      _scheduleFallbackLoopTimer(surahId: surahId, verseNumber: verseNumber, surahName: surahName);
+      return;
+    }
+
+    // Di lingkungan flutter test (tanpa path_provider native), gunakan fallback timer
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      _statusCaption = customCaption ??
+          'Memutar QS. ${surahName ?? surahId}: $verseNumber • ${_selectedReciter.name} '
+              '(${_repeatTargetCount > 1 ? "Ulang $_currentRepeatIteration/$_repeatTargetCount" : "1x"})';
+      notifyListeners();
+      _scheduleFallbackLoopTimer(surahId: surahId, verseNumber: verseNumber, surahName: surahName);
+      return;
+    }
+
+    final localPath = await _downloadOrGetCachedMp3(url, surahId, verseNumber);
+    if (!_isPlaying) return; // Pengguna sudah menekan Stop saat mengunduh
+
+    if (localPath == null) {
+      _isPlaying = false;
+      _statusCaption = 'Gagal memuat audio murattal (periksa koneksi internet Anda).';
+      notifyListeners();
+      return;
+    }
+
+    _cachedLocalFilePath = localPath;
     _statusCaption = customCaption ??
         'Memutar QS. ${surahName ?? surahId}: $verseNumber • ${_selectedReciter.name} '
             '(${_repeatTargetCount > 1 ? "Ulang $_currentRepeatIteration/$_repeatTargetCount" : "1x"})';
     notifyListeners();
 
-    if (externalAudioUrlPlayer != null) {
-      await externalAudioUrlPlayer!(url);
-    }
+    await _playLocalFileOnPlatform(localPath);
+  }
 
-    // Pengatur siklus loop otomatis apabila pengguna memilih pengulangan (misal 3x untuk menguatkan mutasyabihat)
-    _scheduleLoopCheck(surahId: surahId, verseNumber: verseNumber, surahName: surahName);
+  Future<void> _playLocalFileOnPlatform(String filePath) async {
+    try {
+      if (Platform.isAndroid) {
+        await _nativeChannel.invokeMethod('playAudio', {'filePath': filePath});
+        _startCompletionPolling();
+      } else if (Platform.isWindows) {
+        _WindowsMciAudioPlayer.playFile(filePath);
+        _startCompletionPolling();
+      } else if (Platform.isMacOS) {
+        _macosAudioProcess?.kill();
+        _macosAudioProcess = await Process.start('afplay', [filePath]);
+        _macosAudioProcess!.exitCode.then((_) {
+          if (_isPlaying) {
+            _onSingleIterationFinished();
+          }
+        });
+      } else if (Platform.isLinux) {
+        _macosAudioProcess?.kill();
+        _macosAudioProcess = await Process.start('aplay', [filePath]);
+        _macosAudioProcess!.exitCode.then((_) {
+          if (_isPlaying) {
+            _onSingleIterationFinished();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[QuranMurattalAudioService] Gagal memutar file audio native: $e');
+      _scheduleFallbackLoopTimer(
+        surahId: _playingSurahId ?? 1,
+        verseNumber: _playingVerseNumber ?? 1,
+        surahName: _playingSurahName,
+      );
+    }
+  }
+
+  void _startCompletionPolling() {
+    _playbackPollTimer?.cancel();
+    _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+      if (!_isPlaying) {
+        timer.cancel();
+        return;
+      }
+      bool stillPlaying = false;
+      try {
+        if (Platform.isAndroid) {
+          stillPlaying = await _nativeChannel.invokeMethod<bool>('isAudioPlaying') ?? false;
+        } else if (Platform.isWindows) {
+          stillPlaying = _WindowsMciAudioPlayer.isPlaying();
+        }
+      } catch (_) {
+        stillPlaying = false;
+      }
+
+      if (!stillPlaying) {
+        timer.cancel();
+        await _onSingleIterationFinished();
+      }
+    });
+  }
+
+  Future<void> _onSingleIterationFinished() async {
+    if (!_isPlaying) return;
+    if (_currentRepeatIteration < _repeatTargetCount && _cachedLocalFilePath != null) {
+      _currentRepeatIteration++;
+      _statusCaption =
+          'Memutar QS. ${_playingSurahName ?? _playingSurahId}: $_playingVerseNumber • ${_selectedReciter.name} '
+          '(Ulang $_currentRepeatIteration/$_repeatTargetCount)';
+      notifyListeners();
+      await _playLocalFileOnPlatform(_cachedLocalFilePath!);
+    } else {
+      _isPlaying = false;
+      _statusCaption =
+          'Selesai memutar QS. ${_playingSurahName ?? _playingSurahId}: $_playingVerseNumber.';
+      notifyListeners();
+    }
   }
 
   /// Dipanggil secara otomatis ketika pengguna terkena peringatan Trap Jump (lompat ke surah lain).
@@ -168,12 +376,13 @@ class QuranMurattalAudioService extends ChangeNotifier {
     );
   }
 
-  void _scheduleLoopCheck({
+  void _scheduleFallbackLoopTimer({
     required int surahId,
     required int verseNumber,
     String? surahName,
   }) {
-    _playbackTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    _playbackPollTimer?.cancel();
+    _playbackPollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (!_isPlaying) {
         timer.cancel();
         return;
@@ -197,8 +406,23 @@ class QuranMurattalAudioService extends ChangeNotifier {
     });
   }
 
+  void _stopNativePlaybackOnly() {
+    _playbackPollTimer?.cancel();
+    _macosAudioProcess?.kill();
+    _macosAudioProcess = null;
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      try {
+        if (Platform.isAndroid) {
+          _nativeChannel.invokeMethod('stopAudio');
+        } else if (Platform.isWindows) {
+          _WindowsMciAudioPlayer.stop();
+        }
+      } catch (_) {}
+    }
+  }
+
   void stop() {
-    _playbackTimer?.cancel();
+    _stopNativePlaybackOnly();
     _isPlaying = false;
     _statusCaption = 'Pemutaran murattal dihentikan.';
     notifyListeners();
@@ -206,7 +430,7 @@ class QuranMurattalAudioService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _playbackTimer?.cancel();
+    _stopNativePlaybackOnly();
     super.dispose();
   }
 }
@@ -260,7 +484,6 @@ class Mushaf15LineLayoutEngine {
 
     int? lastSurahId;
     for (final verse in pageVerses) {
-      // Jika memasuki ayat ke-1 dari sebuah Surah baru, sisipkan header Surah & Basmalah
       if (verse.verseNumber == 1 && verse.surahId != lastSurahId) {
         lastSurahId = verse.surahId;
         rawSegments.add(
@@ -270,7 +493,6 @@ class Mushaf15LineLayoutEngine {
             headerSurahName: verse.surahNameLatin ?? 'Surah ${verse.surahId}',
           ),
         );
-        // Semua surah selain At-Taubah (9) dan Al-Fatihah (1) memiliki baris Basmalah tersendiri
         if (verse.surahId != 1 && verse.surahId != 9) {
           rawSegments.add(
             const MushafLineModel(
@@ -307,7 +529,6 @@ class Mushaf15LineLayoutEngine {
       tokenPool.add(MushafLineToken(verse: verse, isVerseEndMarker: true));
     }
 
-    // Hitung jumlah baris teks yang tersisa dari total 15 baris setelah dikurangi baris Header/Basmalah
     final remainingTextLines =
         (standardLinesPerPage - rawSegments.length).clamp(1, standardLinesPerPage);
 
@@ -329,9 +550,9 @@ class Mushaf15LineLayoutEngine {
       return resultLines;
     }
 
-    // Distribusi kata secara proporsional seperti di versi Web (minimal 4 token per baris)
-    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 4
-        ? 4
+    // Distribusi kata secara proporsional agar mengisi baris Mushaf Madinah secara merata
+    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 5
+        ? 5
         : (tokenPool.length / remainingTextLines).ceil();
 
     var cursor = 0;
@@ -382,9 +603,10 @@ class Mushaf15LineLayoutEngine {
 
 // =============================================================================
 // 4. WIDGET LEMBARAN MUSHAF MADINAH 15 BARIS INTERAKTIF
+//    (DENGAN FITUR ZOOM IN / ZOOM OUT, PINCH-TO-ZOOM, & MODE SELEMBAR PENUH)
 // =============================================================================
 
-class Mushaf15LinePageWidget extends StatelessWidget {
+class Mushaf15LinePageWidget extends StatefulWidget {
   final List<Verse> verses;
   final int activeVerseId;
   final int revealedWordPosition;
@@ -413,6 +635,36 @@ class Mushaf15LinePageWidget extends StatelessWidget {
   });
 
   @override
+  State<Mushaf15LinePageWidget> createState() => _Mushaf15LinePageWidgetState();
+}
+
+class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
+  double _zoomScale = 1.0;
+  bool _singleSheetFitMode = true;
+  final TransformationController _transformController = TransformationController();
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  void _updateZoom(double newScale) {
+    final clamped = newScale.clamp(0.60, 2.50);
+    setState(() {
+      _zoomScale = clamped;
+      _transformController.value = Matrix4.identity()..scale(clamped);
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomScale = 1.0;
+      _transformController.value = Matrix4.identity();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final pageBg = isDark ? const Color(0xFF1A201E) : const Color(0xFFFCFAF6);
@@ -422,128 +674,261 @@ class Mushaf15LinePageWidget extends StatelessWidget {
     final goldText = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
     final arabicColor = isDark ? const Color(0xFFF3F1EC) : const Color(0xFF141816);
     final bannerBg = isDark ? const Color(0xFF242B28) : const Color(0xFFF2ECE1);
+    final mutedColor = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
 
-    final pageNumber = verses.isNotEmpty ? verses.first.pageNumber : 582;
-    final juzNumber = verses.isNotEmpty ? verses.first.juzNumber : 30;
-    final surahTitle = surahArabicName != null && surahArabicName!.isNotEmpty
-        ? 'سُورَةُ $surahArabicName'
-        : (verses.isNotEmpty ? 'سُورَةُ ${verses.first.surahNameLatin ?? ''}' : '');
-    final lines = Mushaf15LineLayoutEngine.build15LinesForPage(verses);
+    final pageNumber = widget.verses.isNotEmpty ? widget.verses.first.pageNumber : 582;
+    final juzNumber = widget.verses.isNotEmpty ? widget.verses.first.juzNumber : 30;
+    final surahTitle = widget.surahArabicName != null && widget.surahArabicName!.isNotEmpty
+        ? 'سُورَةُ ${widget.surahArabicName}'
+        : (widget.verses.isNotEmpty ? 'سُورَةُ ${widget.verses.first.surahNameLatin ?? ''}' : '');
+    final lines = Mushaf15LineLayoutEngine.build15LinesForPage(widget.verses);
+    final visibleLines = lines.where((l) => l.isSurahHeader || l.isBismillahLine || l.tokens.isNotEmpty).toList();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      decoration: BoxDecoration(
-        color: pageBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderGold, width: 2.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Toolbar Zoom In / Zoom Out & Mode Selembar Mushaf Madinah
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: pageBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isDark ? const Color(0xFF28302D) : const Color(0xFFE6DFD3)),
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header Halaman Mushaf (persis seperti .mushaf-page-header di Web)
-          Container(
-            padding: const EdgeInsets.only(bottom: 12),
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: borderGold, width: 1.0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.menu_book_rounded, size: 16, color: primaryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tampilan Lembar Mushaf Madinah',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: mutedColor),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Toggle Selembar Penuh vs Teks Mengalir
+                  InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () => setState(() => _singleSheetFitMode = !_singleSheetFitMode),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: _singleSheetFitMode
+                            ? primaryColor.withOpacity(0.14)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: _singleSheetFitMode ? primaryColor : borderGold.withOpacity(0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.aspect_ratio_rounded,
+                            size: 14,
+                            color: _singleSheetFitMode ? primaryColor : mutedColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Selembar Mushaf',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _singleSheetFitMode ? primaryColor : mutedColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Tombol Zoom Out (-)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Perkecil Mushaf (Zoom Out)',
+                    onPressed: () => _updateZoom(_zoomScale - 0.15),
+                    icon: Icon(Icons.remove_circle_outline_rounded, size: 20, color: mutedColor),
+                  ),
+                  // Indikator Persentase Zoom (Klik untuk Reset 100%)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: _resetZoom,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF242B28) : const Color(0xFFF2ECE1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${(_zoomScale * 100).round()}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Tombol Zoom In (+)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Perbesar Mushaf (Zoom In)',
+                    onPressed: () => _updateZoom(_zoomScale + 0.15),
+                    icon: Icon(Icons.add_circle_outline_rounded, size: 20, color: mutedColor),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Bingkai Lembaran Mushaf Madinah (Mendukung Cubit Layar / Pinch-to-Zoom)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: InteractiveViewer(
+            transformationController: _transformController,
+            minScale: 0.60,
+            maxScale: 2.50,
+            panEnabled: true,
+            scaleEnabled: true,
+            onInteractionEnd: (_) {
+              final currentScale = _transformController.value.getMaxScaleOnAxis();
+              if ((currentScale - _zoomScale).abs() > 0.02) {
+                setState(() => _zoomScale = currentScale.clamp(0.60, 2.50));
+              }
+            },
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: _singleSheetFitMode ? 680 : double.infinity,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                  decoration: BoxDecoration(
+                    color: pageBg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: borderGold, width: 2.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Halaman Mushaf
+                      Container(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: borderGold, width: 1.0),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(juzNumber)}',
+                              style: TextStyle(
+                                fontSize: 15 * (_singleSheetFitMode ? 1.0 : _zoomScale),
+                                fontWeight: FontWeight.w700,
+                                color: goldText,
+                              ),
+                            ),
+                            Text(
+                              surahTitle,
+                              style: TextStyle(
+                                fontSize: 17 * (_singleSheetFitMode ? 1.0 : _zoomScale),
+                                fontWeight: FontWeight.w700,
+                                color: primaryColor,
+                              ),
+                            ),
+                            Text(
+                              Mushaf15LineLayoutEngine.toArabicDigits(pageNumber),
+                              style: TextStyle(
+                                fontSize: 15 * (_singleSheetFitMode ? 1.0 : _zoomScale),
+                                fontWeight: FontWeight.w700,
+                                color: goldText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Baris-baris Mushaf Madinah (1 Baris Tetap Utuh 1 Baris pada Mode Selembar Mushaf)
+                      ...visibleLines.map(
+                        (line) => _buildMushafLineRow(
+                          context,
+                          line,
+                          isDark: isDark,
+                          primaryColor: primaryColor,
+                          goldText: goldText,
+                          borderGold: borderGold,
+                          lineRule: lineRule,
+                          arabicColor: arabicColor,
+                          bannerBg: bannerBg,
+                        ),
+                      ),
+
+                      // Footer Navigasi Halaman Mushaf
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.only(top: 10),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: borderGold, width: 1.0),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              onPressed: widget.onPrevPage,
+                              icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                              label: const Text('Sebelumnya'),
+                              style: TextButton.styleFrom(foregroundColor: mutedColor),
+                            ),
+                            Text(
+                              'Halaman $pageNumber',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: mutedColor,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: widget.onNextPage,
+                              icon: const Text('Selanjutnya'),
+                              label: const Icon(Icons.chevron_right_rounded, size: 18),
+                              style: TextButton.styleFrom(foregroundColor: mutedColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(juzNumber)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: goldText,
-                  ),
-                ),
-                Text(
-                  surahTitle,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: primaryColor,
-                  ),
-                ),
-                Text(
-                  Mushaf15LineLayoutEngine.toArabicDigits(pageNumber),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: goldText,
-                  ),
-                ),
-              ],
-            ),
           ),
-
-          // 15 Baris Mushaf (tanpa angka 1..15 di tepi kiri, persis seperti Web)
-          ...lines.where((l) => l.isSurahHeader || l.isBismillahLine || l.tokens.isNotEmpty).map(
-                (line) => _buildMushafLineRow(
-                  context,
-                  line,
-                  isDark: isDark,
-                  primaryColor: primaryColor,
-                  goldText: goldText,
-                  borderGold: borderGold,
-                  lineRule: lineRule,
-                  arabicColor: arabicColor,
-                  bannerBg: bannerBg,
-                ),
-              ),
-
-          // Footer Navigasi Halaman Mushaf (persis seperti .mushaf-page-footer di Web)
-          Container(
-            margin: const EdgeInsets.only(top: 14),
-            padding: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: borderGold, width: 1.0),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton.icon(
-                  onPressed: onPrevPage,
-                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                  label: const Text('Sebelumnya'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
-                  ),
-                ),
-                Text(
-                  'Halaman $pageNumber',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: onNextPage,
-                  icon: const Text('Selanjutnya'),
-                  label: const Icon(Icons.chevron_right_rounded, size: 18),
-                  style: TextButton.styleFrom(
-                    foregroundColor: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -558,15 +943,17 @@ class Mushaf15LinePageWidget extends StatelessWidget {
     required Color arabicColor,
     required Color bannerBg,
   }) {
+    final effectiveFontScale = _singleSheetFitMode ? 1.0 : _zoomScale;
+
     if (line.isSurahHeader) {
-      final revArabic = (revelationType?.toLowerCase() == 'madaniyah') ? 'مَدَنِيَّة' : 'مَكِّيَّة';
-      final titleArabic = surahArabicName != null && surahArabicName!.isNotEmpty
-          ? 'سُورَةُ $surahArabicName • $revArabic'
+      final revArabic = (widget.revelationType?.toLowerCase() == 'madaniyah') ? 'مَدَنِيَّة' : 'مَكِّيَّة';
+      final titleArabic = widget.surahArabicName != null && widget.surahArabicName!.isNotEmpty
+          ? 'سُورَةُ ${widget.surahArabicName} • $revArabic'
           : 'سُورَةُ ${line.headerSurahName} • $revArabic';
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 16),
         decoration: BoxDecoration(
           color: bannerBg,
           borderRadius: BorderRadius.circular(8),
@@ -577,7 +964,7 @@ class Mushaf15LinePageWidget extends StatelessWidget {
             titleArabic,
             textDirection: TextDirection.rtl,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 19 * effectiveFontScale,
               fontWeight: FontWeight.w700,
               color: primaryColor,
             ),
@@ -589,7 +976,7 @@ class Mushaf15LinePageWidget extends StatelessWidget {
     if (line.isBismillahLine) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
         ),
@@ -598,7 +985,7 @@ class Mushaf15LinePageWidget extends StatelessWidget {
             'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
             textDirection: TextDirection.rtl,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 21 * effectiveFontScale,
               fontWeight: FontWeight.w600,
               color: arabicColor,
             ),
@@ -607,79 +994,96 @@ class Mushaf15LinePageWidget extends StatelessWidget {
       );
     }
 
+    final tokenWidgets = line.tokens.map((token) {
+      final isVerseActive = token.verse.id == widget.activeVerseId;
+
+      if (token.isVerseEndMarker) {
+        return InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            widget.onSelectVerse(token.verse);
+            widget.onPlayVerseAudio(token.verse);
+          },
+          onLongPress: () => widget.onShowTafsir(token.verse),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Text(
+              '۝${Mushaf15LineLayoutEngine.toArabicDigits(token.verse.verseNumber)}',
+              style: TextStyle(
+                fontSize: 21 * effectiveFontScale,
+                fontWeight: FontWeight.w700,
+                color: isVerseActive ? primaryColor : goldText,
+              ),
+            ),
+          ),
+        );
+      }
+
+      final word = token.word!;
+      final isRevealed = !widget.hideVerseMode ||
+          (isVerseActive && word.wordPosition <= widget.revealedWordPosition);
+
+      return InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => widget.onSelectVerse(token.verse),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: (isVerseActive && isRevealed && widget.hideVerseMode)
+                ? primaryColor.withOpacity(0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: isRevealed ? 0.0 : 8.0,
+              sigmaY: isRevealed ? 0.0 : 8.0,
+            ),
+            child: Text(
+              word.textUthmani,
+              style: TextStyle(
+                fontSize: 24 * effectiveFontScale,
+                height: 1.75,
+                fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
+                color: isVerseActive && isRevealed ? primaryColor : arabicColor,
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList();
+
+    // Pada mode "Selembar Mushaf", setiap baris dijaga tetap 1 baris utuh proporsional
+    // menggunakan FittedBox(scaleDown) seperti cetakan Mushaf Madinah 15 Baris.
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 50),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
       ),
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Wrap(
-          alignment: WrapAlignment.spaceEvenly,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 6,
-          children: line.tokens.map((token) {
-            final isVerseActive = token.verse.id == activeVerseId;
-
-            if (token.isVerseEndMarker) {
-              return InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  onSelectVerse(token.verse);
-                  onPlayVerseAudio(token.verse);
-                },
-                onLongPress: () => onShowTafsir(token.verse),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Text(
-                    '۝${Mushaf15LineLayoutEngine.toArabicDigits(token.verse.verseNumber)}',
-                    style: TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                      color: isVerseActive ? primaryColor : goldText,
-                    ),
+        child: _singleSheetFitMode
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 560),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: tokenWidgets,
                   ),
                 ),
-              );
-            }
-
-            final word = token.word!;
-            final isRevealed = !hideVerseMode ||
-                (isVerseActive && word.wordPosition <= revealedWordPosition);
-
-            return InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () => onSelectVerse(token.verse),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: (isVerseActive && isRevealed && hideVerseMode)
-                      ? primaryColor.withOpacity(0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(
-                    sigmaX: isRevealed ? 0.0 : 8.0,
-                    sigmaY: isRevealed ? 0.0 : 8.0,
-                  ),
-                  child: Text(
-                    word.textUthmani,
-                    style: TextStyle(
-                      fontSize: 25,
-                      height: 1.85,
-                      fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
-                      color: isVerseActive && isRevealed ? primaryColor : arabicColor,
-                    ),
-                  ),
-                ),
+              )
+            : Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: tokenWidgets,
               ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
@@ -716,7 +1120,6 @@ class MurattalMiniPlayerDock extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             alignment: WrapAlignment.spaceBetween,
             children: [
-              // Pilihan Qari
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -752,8 +1155,6 @@ class MurattalMiniPlayerDock extends StatelessWidget {
                   ),
                 ],
               ),
-
-              // Kontrol Putar / Ulangi Loop / Auto-Koreksi Trap Jump
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -798,13 +1199,13 @@ class MurattalMiniPlayerDock extends StatelessWidget {
                   ),
                 ],
               ),
-
               if (audioService.statusCaption != null)
                 Text(
                   audioService.statusCaption!,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFFFBBF24),
+                    color: Color(0xFF94A3B8),
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
             ],

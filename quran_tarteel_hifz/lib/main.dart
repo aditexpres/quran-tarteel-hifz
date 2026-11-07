@@ -898,7 +898,7 @@ class MushafVoiceHifzView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 onTap: state.isListening
                     ? voiceController.stopListening
-                    : voiceController.startListening,
+                    : () => voiceController.startListening(resetWordsOnStart: true),
                 child: Container(
                   width: 48,
                   height: 48,
@@ -1354,6 +1354,16 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
   final TextEditingController _transcriptController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    widget.voiceController.onLiveTranscriptCallback = (String liveText) {
+      if (!mounted) return;
+      _transcriptController.text = liveText;
+      _runEvaluation(liveText);
+    };
+  }
+
+  @override
   void didUpdateWidget(covariant RecitationCorrectionView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.verses != widget.verses) {
@@ -1423,6 +1433,9 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
 
   @override
   void dispose() {
+    if (widget.voiceController.onLiveTranscriptCallback != null) {
+      widget.voiceController.onLiveTranscriptCallback = null;
+    }
     _transcriptController.dispose();
     super.dispose();
   }

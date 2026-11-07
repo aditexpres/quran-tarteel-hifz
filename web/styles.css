@@ -1668,6 +1668,71 @@ html.dark .corr-word-chip.status-wrong {
 }
 
 /* ==========================================================================
+   11C. TOOLBAR ZOOM MUSHAF & MODE SELEMBAR MUSHAF MADINAH
+   ========================================================================== */
+.mushaf-zoom-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background-color: var(--mushaf-page-bg);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+}
+
+.zoom-label-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.zoom-label-group svg {
+  color: var(--primary);
+}
+
+.zoom-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-pct-badge {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.mushaf-page-card.single-sheet-mode {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  transform-origin: top center;
+  transition: transform 0.15s ease;
+}
+
+.mushaf-page-card.single-sheet-mode .mushaf-line {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mushaf-page-card.single-sheet-mode .mushaf-line::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==========================================================================
    12. UTILITAS & RESPONSIVITAS
    ========================================================================== */
 .hidden {
