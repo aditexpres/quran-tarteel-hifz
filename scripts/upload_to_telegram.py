@@ -29,8 +29,24 @@ FILES_TO_UPLOAD = [
         "filename": "QuranTarteelHifz-macOS-Universal.dmg",
         "caption": (
             "🍏 *Quran Tarteel Hifz v1.0.0 — macOS Universal DMG*\n"
-            "Installer resmi Apple Silicon (M1/M2/M3/M4) + Intel Mac.\n"
-            "Dilengkapi engine whisper.cpp dengan akselerasi Apple Metal GPU!"
+            "Installer drag & drop resmi Apple Silicon (M1/M2/M3/M4) + Intel Mac.\n"
+            "Dilengkapi helper 1-klik buka aplikasi dan engine whisper.cpp Metal GPU!"
+        ),
+    },
+    {
+        "filename": "QuranTarteelHifz-macOS-Universal.pkg",
+        "caption": (
+            "🍏 *Quran Tarteel Hifz v1.0.0 — macOS Native PKG Installer*\n"
+            "Installer wizard resmi Apple macOS (langsung terpasang ke /Applications).\n"
+            "Langsung klik 2x untuk memasang tanpa kendala Gatekeeper!"
+        ),
+    },
+    {
+        "filename": "QuranTarteelHifz-Windows-x64.zip",
+        "caption": (
+            "💻 *Quran Tarteel Hifz v1.0.0 — Windows Desktop Portable ZIP*\n"
+            "Paket mandiri Windows 64-bit (EXE + whisper.dll AVX2).\n"
+            "Ekstrak dan langsung jalankan quran_tarteel_hifz.exe tanpa instalasi rumit!"
         ),
     },
 ]

@@ -111,6 +111,33 @@ bash build_whisper_native.sh windows   # Menghasilkan whisper.dll (x86_64)
 
 ```
 
+### Panduan Instalasi macOS (Apple Silicon M1/M2/M3/M4 & Intel Mac)
+
+File rilis macOS tersedia dalam dua format resmi:
+
+1. **Paket Installer `.pkg` (Paling Direkomendasikan & Langsung Bisa Diinstal)**:
+   - Unduh `QuranTarteelHifz-macOS-Universal.pkg`.
+   - Klik dua kali file `.pkg`. Jendela instalasi resmi macOS akan muncul.
+   - Klik **Lanjutkan (Continue)** -> **Pasang (Install)** -> Masukkan Touch ID/password Mac.
+   - Aplikasi otomatis terpasang di `/Applications` dan siap dibuka dari Launchpad!
+
+2. **Disk Image `.dmg` (Drag & Drop + 1-Klik Helper)**:
+   - Unduh dan buka `QuranTarteelHifz-macOS-Universal.dmg`.
+   - Cukup klik dua kali **`Buka Aplikasi (Klik Dua Kali).command`** di dalam folder DMG. Skrip ini akan otomatis menyalin aplikasi ke `/Applications`, membersihkan karantina Gatekeeper, dan membuka aplikasi.
+   - Atau geser (drag) ikon `Qur'an Tarteel Hifz.app` ke shortcut `Applications`.
+
+3. **Solusi Cepat Jika Muncul Peringatan Gatekeeper ("Aplikasi Rusak" / "Unidentified Developer")**:
+   - Jalankan skrip perbaikan otomatis:
+     ```bash
+     bash scripts/fix_macos_install.sh
+     ```
+   - Atau langsung jalankan 1 baris perintah ini di Terminal Mac:
+     ```bash
+     xattr -cr "/Applications/Qur'an Tarteel Hifz.app"
+     codesign --force --deep --sign - "/Applications/Qur'an Tarteel Hifz.app"
+     open "/Applications/Qur'an Tarteel Hifz.app"
+     ```
+
 ## 4. Roadmap Pengembangan Selanjutnya (Untuk Rekan Tim)
 
 1. **Integrasi Font QCF Per Halaman Mushaf Madinah**: Mengunduh font `.ttf` per halaman (halaman 1–604) dari [Quranic Universal Library (QUL)](https://qul.tarteel.ai/) agar ligatur kaligrafi Uthmani pada `Mushaf15LinePageWidget` identik 100% dengan cetakan Kompleks Raja Fahd.

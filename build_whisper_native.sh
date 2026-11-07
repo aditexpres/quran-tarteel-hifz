@@ -96,6 +96,15 @@ build_macos() {
   MACOS_OUT_DIR="$FLUTTER_PROJECT_DIR/macos/Runner"
   mkdir -p "$MACOS_OUT_DIR"
   find "$MACOS_BUILD_DIR" -name "*.dylib" -exec cp {} "$MACOS_OUT_DIR/" \;
+
+  # Pastikan ID dylib menggunakan @rpath dan diberikan ad-hoc signature
+  for f in "$MACOS_OUT_DIR"/*.dylib; do
+    if [ -f "$f" ]; then
+      install_name_tool -id "@rpath/$(basename "$f")" "$f" 2>/dev/null || true
+      codesign --force --sign - --timestamp=none "$f" 2>/dev/null || true
+    fi
+  done
+
   echo "[3/3] Selesai! Tersimpan di: $MACOS_OUT_DIR/"
 }
 

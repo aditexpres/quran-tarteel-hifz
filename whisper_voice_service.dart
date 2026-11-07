@@ -380,6 +380,26 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
     throw UnsupportedError('Platform tidak didukung untuk Whisper FFI.');
   }
 
+  static ffi.DynamicLibrary _openDynamicLibrary(String libName) {
+    try {
+      return ffi.DynamicLibrary.open(libName);
+    } catch (_) {
+      if (Platform.isMacOS) {
+        try {
+          return ffi.DynamicLibrary.open('@rpath/$libName');
+        } catch (_) {}
+        try {
+          final exeDir = File(Platform.resolvedExecutable).parent.path;
+          final fwPath = '$exeDir/../Frameworks/$libName';
+          if (File(fwPath).existsSync()) {
+            return ffi.DynamicLibrary.open(fwPath);
+          }
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
+
   @override
   Future<void> initialize() async {
     if (_isInitialized && _ctxHandle != 0) return;
@@ -396,7 +416,7 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
     final pathToLoad = modelFilePath;
 
     _ctxHandle = await Isolate.run<int>(() {
-      final dylib = ffi.DynamicLibrary.open(libName);
+      final dylib = _openDynamicLibrary(libName);
       final initFn = dylib.lookupFunction<_WhisperBridgeInitNative,
           _WhisperBridgeInitDart>('whisper_bridge_init');
 
@@ -427,7 +447,7 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
     final threadCount = threads;
 
     return Isolate.run<String>(() {
-      final dylib = ffi.DynamicLibrary.open(libName);
+      final dylib = _openDynamicLibrary(libName);
       final transcribeFn = dylib.lookupFunction<_WhisperBridgeTranscribeNative,
           _WhisperBridgeTranscribeDart>('whisper_bridge_transcribe_arabic');
       final freeStringFn = dylib.lookupFunction<_WhisperBridgeFreeStringNative,
@@ -475,7 +495,7 @@ class WhisperCppFfiEngine implements WhisperTranscriberEngine {
       _isInitialized = false;
 
       await Isolate.run<void>(() {
-        final dylib = ffi.DynamicLibrary.open(libName);
+        final dylib = _openDynamicLibrary(libName);
         final freeCtxFn = dylib.lookupFunction<_WhisperBridgeFreeNative,
             _WhisperBridgeFreeDart>('whisper_bridge_free');
         freeCtxFn(handle);

@@ -15,7 +15,15 @@ $files = @(
     },
     @{
         Path = "$ReleaseDir\QuranTarteelHifz-macOS-Universal.dmg"
-        Caption = "🍏 *Qur'an Tarteel Hifz v1.0.0 — macOS Universal DMG*`nInstaller resmi Apple Silicon (M1/M2/M3/M4) + Intel Mac.`nDilengkapi engine whisper.cpp dengan akselerasi Apple Metal GPU!"
+        Caption = "🍏 *Qur'an Tarteel Hifz v1.0.0 — macOS Universal DMG*`nInstaller drag & drop resmi Apple Silicon (M1/M2/M3/M4) + Intel Mac.`nDilengkapi helper 1-klik buka aplikasi dan engine whisper.cpp Metal GPU!"
+    },
+    @{
+        Path = "$ReleaseDir\QuranTarteelHifz-macOS-Universal.pkg"
+        Caption = "🍏 *Qur'an Tarteel Hifz v1.0.0 — macOS Native PKG Installer*`nInstaller wizard resmi Apple macOS (langsung terpasang ke /Applications).`nLangsung klik 2x untuk memasang tanpa kendala Gatekeeper!"
+    },
+    @{
+        Path = "$ReleaseDir\QuranTarteelHifz-Windows-x64.zip"
+        Caption = "💻 *Qur'an Tarteel Hifz v1.0.0 — Windows Desktop Portable ZIP*`nPaket mandiri Windows 64-bit (EXE + whisper.dll AVX2).`nEkstrak dan langsung jalankan quran_tarteel_hifz.exe tanpa instalasi rumit!"
     }
 )
 

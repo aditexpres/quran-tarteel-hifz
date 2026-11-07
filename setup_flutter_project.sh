@@ -475,23 +475,35 @@ if [ -f "$SCRIPT_DIR/patch_android_signing.py" ]; then
   python3 "$SCRIPT_DIR/patch_android_signing.py" "$PROJECT_NAME"
 fi
 
-MACOS_ENTITLEMENTS="$PROJECT_NAME/macos/Runner/DebugProfile.entitlements"
-cat > "$MACOS_ENTITLEMENTS" << 'EOF'
+echo "=================================================================="
+echo " 3c. Mengonfigurasi Izin macOS (Entitlements Non-Sandbox & Info.plist)"
+echo "=================================================================="
+if [ -f "$SCRIPT_DIR/patch_macos_config.py" ]; then
+  python3 "$SCRIPT_DIR/patch_macos_config.py" "$PROJECT_NAME"
+fi
+
+MACOS_RUNNER="$PROJECT_NAME/macos/Runner"
+mkdir -p "$MACOS_RUNNER"
+cat > "$MACOS_RUNNER/Release.entitlements" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>com.apple.security.app-sandbox</key>
-    <true/>
+    <false/>
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.network.client</key>
     <true/>
     <key>com.apple.security.device.audio-input</key>
     <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
 </dict>
 </plist>
 EOF
+
+cp "$MACOS_RUNNER/Release.entitlements" "$MACOS_RUNNER/DebugProfile.entitlements"
 
 echo "=================================================================="
 echo " 4. Membangun Database SQLite (quran_master.db) ke assets/db/"
