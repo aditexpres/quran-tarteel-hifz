@@ -1,7 +1,8 @@
 // mushaf_15line_and_audio.dart
 // =============================================================================
 // [OPSI 3] Modul Tampilan Mushaf Standar Madinah (15 Baris Proporsional Selembar
-// Penuh + Zoom In/Out & Pinch-to-Zoom) serta Pemutar Audio Murattal Native
+// Penuh + Zoom In/Out via Ctrl+Scroll Mouse di Desktop & Cubit 2 Jari / Pinch
+// di Android Tanpa Mengganggu Scroll Halaman) serta Pemutar Audio Murattal Native
 // Lintas Platform (Android MediaPlayer, Windows winmm.dll MCI, macOS afplay).
 // =============================================================================
 
@@ -10,6 +11,7 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 import 'dart:ui';
 import 'package:ffi/ffi.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -90,6 +92,118 @@ class _WindowsMciAudioPlayer {
   static bool isPlaying() {
     final mode = queryStatus('status quran_murattal mode').toLowerCase();
     return mode.contains('playing');
+  }
+}
+
+// =============================================================================
+// 0B. WIDGET PEMBUNGKUS GESTUR ZOOM MUSHAF LINTAS PLATFORM
+//     - Desktop (Windows/macOS/Linux): Ctrl + Scroll Mouse (atau mode Scroll=Zoom)
+//       & Trackpad Pinch tanpa mematikan scroll vertikal halaman normal.
+//     - Android/Mobile: Cubit 2 Jari (Pinch-In / Pinch-Out) tanpa menghalangi
+//       scroll halaman 1 jari.
+// =============================================================================
+
+class MushafZoomGestureWrapper extends StatefulWidget {
+  final double zoomScale;
+  final bool scrollWheelZoomWithoutCtrl;
+  final ValueChanged<double> onZoomChanged;
+  final Widget child;
+
+  const MushafZoomGestureWrapper({
+    super.key,
+    required this.zoomScale,
+    this.scrollWheelZoomWithoutCtrl = false,
+    required this.onZoomChanged,
+    required this.child,
+  });
+
+  @override
+  State<MushafZoomGestureWrapper> createState() => _MushafZoomGestureWrapperState();
+}
+
+class _MushafZoomGestureWrapperState extends State<MushafZoomGestureWrapper> {
+  final Map<int, Offset> _activePointers = <int, Offset>{};
+  double? _initialPinchDistance;
+  double _baseZoomOnPinchStart = 1.0;
+
+  double _computeTwoFingerDistance() {
+    if (_activePointers.length < 2) return 0.0;
+    final values = _activePointers.values.toList();
+    return (values[0] - values[1]).distance;
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointers[event.pointer] = event.position;
+    if (_activePointers.length == 2) {
+      final dist = _computeTwoFingerDistance();
+      if (dist > 12.0) {
+        _initialPinchDistance = dist;
+        _baseZoomOnPinchStart = widget.zoomScale;
+      }
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (!_activePointers.containsKey(event.pointer)) return;
+    _activePointers[event.pointer] = event.position;
+
+    if (_activePointers.length >= 2 && _initialPinchDistance != null && _initialPinchDistance! > 12.0) {
+      final currentDist = _computeTwoFingerDistance();
+      final ratio = currentDist / _initialPinchDistance!;
+      final nextZoom = (_baseZoomOnPinchStart * ratio).clamp(0.60, 2.50);
+      if ((nextZoom - widget.zoomScale).abs() > 0.01) {
+        widget.onZoomChanged(nextZoom);
+      }
+    }
+  }
+
+  void _handlePointerUpOrCancel(PointerEvent event) {
+    _activePointers.remove(event.pointer);
+    if (_activePointers.length < 2) {
+      _initialPinchDistance = null;
+    }
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScaleEvent) {
+      GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent e) {
+        final scaleEvt = e as PointerScaleEvent;
+        final nextZoom = (widget.zoomScale * scaleEvt.scale).clamp(0.60, 2.50);
+        widget.onZoomChanged(nextZoom);
+      });
+      return;
+    }
+
+    if (event is PointerScrollEvent) {
+      final isCtrlOrCmdPressed = HardwareKeyboard.instance.isControlPressed ||
+          HardwareKeyboard.instance.isMetaPressed;
+
+      if (isCtrlOrCmdPressed || widget.scrollWheelZoomWithoutCtrl) {
+        // Intercept event scroll agar halaman tidak ikut bergulir saat pengguna sedang melakukan Zoom
+        GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent e) {
+          final scrollEvt = e as PointerScrollEvent;
+          if (scrollEvt.scrollDelta.dy == 0) return;
+          final delta = scrollEvt.scrollDelta.dy < 0 ? 0.10 : -0.10;
+          final nextZoom = (widget.zoomScale + delta).clamp(0.60, 2.50);
+          widget.onZoomChanged(nextZoom);
+        });
+      }
+      // Jika Ctrl tidak ditekan dan mode Scroll=Zoom tidak aktif, biarkan event mengalir
+      // ke SingleChildScrollView agar halaman bergulir naik/turun secara normal!
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _handlePointerDown,
+      onPointerMove: _handlePointerMove,
+      onPointerUp: _handlePointerUpOrCancel,
+      onPointerCancel: _handlePointerUpOrCancel,
+      onPointerSignal: _handlePointerSignal,
+      child: widget.child,
+    );
   }
 }
 
@@ -250,14 +364,12 @@ class QuranMurattalAudioService extends ChangeNotifier {
         'Memuat audio QS. ${surahName ?? surahId}: $verseNumber • ${_selectedReciter.name}...';
     notifyListeners();
 
-    // Jika sedang dijalankan di dalam unit test yang tidak memiliki platform channel/audio nyata
     if (externalAudioUrlPlayer != null) {
       await externalAudioUrlPlayer!(url);
       _scheduleFallbackLoopTimer(surahId: surahId, verseNumber: verseNumber, surahName: surahName);
       return;
     }
 
-    // Di lingkungan flutter test (tanpa path_provider native), gunakan fallback timer
     if (Platform.environment.containsKey('FLUTTER_TEST')) {
       _statusCaption = customCaption ??
           'Memutar QS. ${surahName ?? surahId}: $verseNumber • ${_selectedReciter.name} '
@@ -268,7 +380,7 @@ class QuranMurattalAudioService extends ChangeNotifier {
     }
 
     final localPath = await _downloadOrGetCachedMp3(url, surahId, verseNumber);
-    if (!_isPlaying) return; // Pengguna sudah menekan Stop saat mengunduh
+    if (!_isPlaying) return;
 
     if (localPath == null) {
       _isPlaying = false;
@@ -550,7 +662,6 @@ class Mushaf15LineLayoutEngine {
       return resultLines;
     }
 
-    // Distribusi kata secara proporsional agar mengisi baris Mushaf Madinah secara merata
     final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 5
         ? 5
         : (tokenPool.length / remainingTextLines).ceil();
@@ -603,7 +714,7 @@ class Mushaf15LineLayoutEngine {
 
 // =============================================================================
 // 4. WIDGET LEMBARAN MUSHAF MADINAH 15 BARIS INTERAKTIF
-//    (DENGAN FITUR ZOOM IN / ZOOM OUT, PINCH-TO-ZOOM, & MODE SELEMBAR PENUH)
+//    (ZOOM CTRL+SCROLL MOUSE DI DESKTOP & PINCH 2 JARI DI ANDROID TANPA BLOKIR SCROLL)
 // =============================================================================
 
 class Mushaf15LinePageWidget extends StatefulWidget {
@@ -641,26 +752,17 @@ class Mushaf15LinePageWidget extends StatefulWidget {
 class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
   double _zoomScale = 1.0;
   bool _singleSheetFitMode = true;
-  final TransformationController _transformController = TransformationController();
-
-  @override
-  void dispose() {
-    _transformController.dispose();
-    super.dispose();
-  }
+  bool _scrollWheelZoomsDirectly = false;
 
   void _updateZoom(double newScale) {
-    final clamped = newScale.clamp(0.60, 2.50);
     setState(() {
-      _zoomScale = clamped;
-      _transformController.value = Matrix4.identity()..scale(clamped);
+      _zoomScale = newScale.clamp(0.60, 2.50);
     });
   }
 
   void _resetZoom() {
     setState(() {
       _zoomScale = 1.0;
-      _transformController.value = Matrix4.identity();
     });
   }
 
@@ -684,10 +786,12 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
     final lines = Mushaf15LineLayoutEngine.build15LinesForPage(widget.verses);
     final visibleLines = lines.where((l) => l.isSurahHeader || l.isBismillahLine || l.tokens.isNotEmpty).toList();
 
+    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Toolbar Zoom In / Zoom Out & Mode Selembar Mushaf Madinah
+        // Toolbar Zoom In / Zoom Out & Petunjuk Gestur (Ctrl+Scroll / Pinch 2 Jari)
         Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -707,15 +811,57 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
                 children: [
                   Icon(Icons.menu_book_rounded, size: 16, color: primaryColor),
                   const SizedBox(width: 6),
-                  Text(
-                    'Tampilan Lembar Mushaf Madinah',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: mutedColor),
+                  Flexible(
+                    child: Text(
+                      isDesktop
+                          ? 'Lembar Mushaf Madinah • Ctrl + Scroll Mouse untuk Zoom (Scroll biasa untuk gulir halaman)'
+                          : 'Lembar Mushaf Madinah • Cubit 2 Jari (Pinch) untuk Zoom In/Out',
+                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: mutedColor),
+                    ),
                   ),
                 ],
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (isDesktop)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => setState(() => _scrollWheelZoomsDirectly = !_scrollWheelZoomsDirectly),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _scrollWheelZoomsDirectly
+                              ? goldText.withOpacity(0.16)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: _scrollWheelZoomsDirectly ? goldText : borderGold.withOpacity(0.45),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.mouse_rounded,
+                              size: 13,
+                              color: _scrollWheelZoomsDirectly ? goldText : mutedColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _scrollWheelZoomsDirectly ? 'Scroll = Zoom (Aktif)' : 'Ctrl+Scroll = Zoom',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: _scrollWheelZoomsDirectly ? goldText : mutedColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Toggle Selembar Penuh vs Teks Mengalir
                   InkWell(
                     borderRadius: BorderRadius.circular(6),
@@ -752,7 +898,6 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   // Tombol Zoom Out (-)
                   IconButton(
                     visualDensity: VisualDensity.compact,
@@ -793,139 +938,143 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
           ),
         ),
 
-        // Bingkai Lembaran Mushaf Madinah (Mendukung Cubit Layar / Pinch-to-Zoom)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: InteractiveViewer(
-            transformationController: _transformController,
-            minScale: 0.60,
-            maxScale: 2.50,
-            panEnabled: true,
-            scaleEnabled: true,
-            onInteractionEnd: (_) {
-              final currentScale = _transformController.value.getMaxScaleOnAxis();
-              if ((currentScale - _zoomScale).abs() > 0.02) {
-                setState(() => _zoomScale = currentScale.clamp(0.60, 2.50));
+        // Area Lembaran Mushaf Madinah (Mendukung Ctrl+Scroll di Desktop & Pinch 2 Jari di Android
+        // tanpa menghalangi scroll vertikal halaman 1 jari / roda mouse normal)
+        MushafZoomGestureWrapper(
+          zoomScale: _zoomScale,
+          scrollWheelZoomWithoutCtrl: _scrollWheelZoomsDirectly,
+          onZoomChanged: _updateZoom,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : 680.0;
+              final baseSheetWidth = _singleSheetFitMode
+                  ? (availWidth < 680.0 ? availWidth : 680.0)
+                  : availWidth;
+              final scaledSheetWidth = baseSheetWidth * _zoomScale;
+
+              final mushafCard = Container(
+                width: _singleSheetFitMode ? scaledSheetWidth : availWidth,
+                padding: EdgeInsets.symmetric(
+                  horizontal: (22 * _zoomScale).clamp(12.0, 44.0),
+                  vertical: (18 * _zoomScale).clamp(10.0, 36.0),
+                ),
+                decoration: BoxDecoration(
+                  color: pageBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderGold, width: 2.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Halaman Mushaf
+                    Container(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: borderGold, width: 1.0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(juzNumber)}',
+                            style: TextStyle(
+                              fontSize: 15 * _zoomScale,
+                              fontWeight: FontWeight.w700,
+                              color: goldText,
+                            ),
+                          ),
+                          Text(
+                            surahTitle,
+                            style: TextStyle(
+                              fontSize: 17 * _zoomScale,
+                              fontWeight: FontWeight.w700,
+                              color: primaryColor,
+                            ),
+                          ),
+                          Text(
+                            Mushaf15LineLayoutEngine.toArabicDigits(pageNumber),
+                            style: TextStyle(
+                              fontSize: 15 * _zoomScale,
+                              fontWeight: FontWeight.w700,
+                              color: goldText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 15 Baris Mushaf Madinah
+                    ...visibleLines.map(
+                      (line) => _buildMushafLineRow(
+                        context,
+                        line,
+                        isDark: isDark,
+                        primaryColor: primaryColor,
+                        goldText: goldText,
+                        borderGold: borderGold,
+                        lineRule: lineRule,
+                        arabicColor: arabicColor,
+                        bannerBg: bannerBg,
+                      ),
+                    ),
+
+                    // Footer Navigasi Halaman Mushaf
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: borderGold, width: 1.0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton.icon(
+                            onPressed: widget.onPrevPage,
+                            icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                            label: const Text('Sebelumnya'),
+                            style: TextButton.styleFrom(foregroundColor: mutedColor),
+                          ),
+                          Text(
+                            'Halaman $pageNumber',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: mutedColor,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: widget.onNextPage,
+                            icon: const Text('Selanjutnya'),
+                            label: const Icon(Icons.chevron_right_rounded, size: 18),
+                            style: TextButton.styleFrom(foregroundColor: mutedColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (_singleSheetFitMode && scaledSheetWidth > availWidth) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: mushafCard,
+                );
               }
+              return Center(child: mushafCard);
             },
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: _singleSheetFitMode ? 680 : double.infinity,
-                ),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                  decoration: BoxDecoration(
-                    color: pageBg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: borderGold, width: 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.35 : 0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header Halaman Mushaf
-                      Container(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: borderGold, width: 1.0),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(juzNumber)}',
-                              style: TextStyle(
-                                fontSize: 15 * (_singleSheetFitMode ? 1.0 : _zoomScale),
-                                fontWeight: FontWeight.w700,
-                                color: goldText,
-                              ),
-                            ),
-                            Text(
-                              surahTitle,
-                              style: TextStyle(
-                                fontSize: 17 * (_singleSheetFitMode ? 1.0 : _zoomScale),
-                                fontWeight: FontWeight.w700,
-                                color: primaryColor,
-                              ),
-                            ),
-                            Text(
-                              Mushaf15LineLayoutEngine.toArabicDigits(pageNumber),
-                              style: TextStyle(
-                                fontSize: 15 * (_singleSheetFitMode ? 1.0 : _zoomScale),
-                                fontWeight: FontWeight.w700,
-                                color: goldText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Baris-baris Mushaf Madinah (1 Baris Tetap Utuh 1 Baris pada Mode Selembar Mushaf)
-                      ...visibleLines.map(
-                        (line) => _buildMushafLineRow(
-                          context,
-                          line,
-                          isDark: isDark,
-                          primaryColor: primaryColor,
-                          goldText: goldText,
-                          borderGold: borderGold,
-                          lineRule: lineRule,
-                          arabicColor: arabicColor,
-                          bannerBg: bannerBg,
-                        ),
-                      ),
-
-                      // Footer Navigasi Halaman Mushaf
-                      Container(
-                        margin: const EdgeInsets.only(top: 12),
-                        padding: const EdgeInsets.only(top: 10),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: borderGold, width: 1.0),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            TextButton.icon(
-                              onPressed: widget.onPrevPage,
-                              icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                              label: const Text('Sebelumnya'),
-                              style: TextButton.styleFrom(foregroundColor: mutedColor),
-                            ),
-                            Text(
-                              'Halaman $pageNumber',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: mutedColor,
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: widget.onNextPage,
-                              icon: const Text('Selanjutnya'),
-                              label: const Icon(Icons.chevron_right_rounded, size: 18),
-                              style: TextButton.styleFrom(foregroundColor: mutedColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
         ),
       ],
@@ -943,7 +1092,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
     required Color arabicColor,
     required Color bannerBg,
   }) {
-    final effectiveFontScale = _singleSheetFitMode ? 1.0 : _zoomScale;
+    final effectiveFontScale = _zoomScale;
 
     if (line.isSurahHeader) {
       final revArabic = (widget.revelationType?.toLowerCase() == 'madaniyah') ? 'مَدَنِيَّة' : 'مَكِّيَّة';
@@ -952,8 +1101,8 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
           : 'سُورَةُ ${line.headerSurahName} • $revArabic';
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 16),
+        margin: EdgeInsets.symmetric(vertical: 4 * effectiveFontScale),
+        padding: EdgeInsets.symmetric(vertical: 6 * effectiveFontScale, horizontal: 14),
         decoration: BoxDecoration(
           color: bannerBg,
           borderRadius: BorderRadius.circular(8),
@@ -976,7 +1125,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
     if (line.isBismillahLine) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: 5 * effectiveFontScale),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
         ),
@@ -1053,12 +1202,10 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
       );
     }).toList();
 
-    // Pada mode "Selembar Mushaf", setiap baris dijaga tetap 1 baris utuh proporsional
-    // menggunakan FittedBox(scaleDown) seperti cetakan Mushaf Madinah 15 Baris.
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 44),
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+      constraints: BoxConstraints(minHeight: 42 * effectiveFontScale),
+      padding: EdgeInsets.symmetric(vertical: 3 * effectiveFontScale, horizontal: 4),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: lineRule, width: 1.0)),
       ),
@@ -1069,7 +1216,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 560),
+                  constraints: BoxConstraints(minWidth: 560 * effectiveFontScale),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,

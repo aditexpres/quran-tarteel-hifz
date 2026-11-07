@@ -31,26 +31,18 @@ class _MarkedMushafMutasyabihatViewState
   Verse? _selectedVerse;
   MutasyabihatComparisonPair? _selectedPair;
   double _zoomScale = 1.0;
-  final TransformationController _transformController = TransformationController();
-
-  @override
-  void dispose() {
-    _transformController.dispose();
-    super.dispose();
-  }
+  bool _scrollWheelDirectZoom = false;
 
   void _updateZoom(double newScale) {
     final clamped = newScale.clamp(0.60, 2.50);
     setState(() {
       _zoomScale = clamped;
-      _transformController.value = Matrix4.identity()..scale(clamped);
     });
   }
 
   void _resetZoom() {
     setState(() {
       _zoomScale = 1.0;
-      _transformController.value = Matrix4.identity();
     });
   }
 
@@ -147,9 +139,49 @@ class _MarkedMushafMutasyabihatViewState
                     ),
                   ],
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    // Toggle Scroll Mouse = Zoom langsung (Desktop)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => setState(() => _scrollWheelDirectZoom = !_scrollWheelDirectZoom),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _scrollWheelDirectZoom
+                              ? const Color(0xFF9B7A38).withOpacity(0.18)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _scrollWheelDirectZoom
+                                ? const Color(0xFF9B7A38)
+                                : (isDark ? const Color(0xFF2E3834) : const Color(0xFFD8D0C0)),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.mouse_outlined,
+                              size: 14,
+                              color: _scrollWheelDirectZoom ? const Color(0xFF9B7A38) : mutedColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _scrollWheelDirectZoom ? 'Scroll = Zoom' : 'Ctrl+Scroll = Zoom',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: _scrollWheelDirectZoom ? const Color(0xFF9B7A38) : mutedColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
                       tooltip: 'Perkecil Mushaf (Zoom Out)',
@@ -189,22 +221,12 @@ class _MarkedMushafMutasyabihatViewState
 
           const SizedBox(height: 16),
 
-          // Lembaran Mushaf Madinah Penuh (Mendukung Cubit Layar / Pinch-to-Zoom)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: InteractiveViewer(
-              transformationController: _transformController,
-              minScale: 0.60,
-              maxScale: 2.50,
-              panEnabled: true,
-              scaleEnabled: true,
-              onInteractionEnd: (_) {
-                final currentScale = _transformController.value.getMaxScaleOnAxis();
-                if ((currentScale - _zoomScale).abs() > 0.02) {
-                  setState(() => _zoomScale = currentScale.clamp(0.60, 2.50));
-                }
-              },
-              child: Container(
+          // Lembaran Mushaf Madinah Penuh (Mendukung Cubit 2 Jari di Android & Scroll Mouse di Desktop tanpa menghalangi Scroll Halaman)
+          MushafZoomGestureWrapper(
+            zoomScale: _zoomScale,
+            scrollWheelDirectZoom: _scrollWheelDirectZoom,
+            onZoomChanged: _updateZoom,
+            child: Container(
                 decoration: BoxDecoration(
                   color: pageBg,
                   border: Border.all(
@@ -374,7 +396,6 @@ class _MarkedMushafMutasyabihatViewState
                   ],
                 ),
               ),
-            ),
           ),
 
           const SizedBox(height: 16),

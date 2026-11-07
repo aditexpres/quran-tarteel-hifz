@@ -1324,19 +1324,25 @@
       }
     });
 
-    // Mushaf Zoom In / Zoom Out & Single-Sheet Mode
+    // Zoom In / Zoom Out & Mode Selembar Mushaf Madinah + Scroll Mouse (Desktop) + Pinch-to-Zoom 2 Jari (Android/Mobile)
     let mushafZoom = 1.0;
+    let scrollWheelDirectZoom = false;
     const mushafCard = document.getElementById('mushaf-page-container');
+    const markedCard = document.getElementById('marked-page-container');
     const btnZoomIn = document.getElementById('btn-zoom-in');
     const btnZoomOut = document.getElementById('btn-zoom-out');
     const btnZoomReset = document.getElementById('btn-zoom-reset');
     const btnSingleSheet = document.getElementById('btn-toggle-single-sheet');
+    const btnToggleScrollZoom = document.getElementById('btn-toggle-scroll-zoom');
 
     function applyMushafZoom(newScale) {
-      mushafZoom = Math.min(2.2, Math.max(0.65, newScale));
+      mushafZoom = Math.min(2.5, Math.max(0.60, newScale));
       if (btnZoomReset) btnZoomReset.textContent = `${Math.round(mushafZoom * 100)}%`;
       if (mushafCard) {
         mushafCard.style.zoom = mushafZoom;
+      }
+      if (markedCard) {
+        markedCard.style.zoom = mushafZoom;
       }
     }
 
@@ -1349,6 +1355,55 @@
         btnSingleSheet.classList.toggle('active', active);
       });
     }
+    if (btnToggleScrollZoom) {
+      btnToggleScrollZoom.addEventListener('click', () => {
+        scrollWheelDirectZoom = !scrollWheelDirectZoom;
+        btnToggleScrollZoom.classList.toggle('active', scrollWheelDirectZoom);
+        btnToggleScrollZoom.textContent = scrollWheelDirectZoom ? 'Scroll = Zoom' : 'Ctrl+Scroll = Zoom';
+      });
+    }
+
+    // Gesture Zoom (Wheel di Desktop & Pinch 2 Jari di Android/Touchscreen tanpa menghalangi Scroll 1 Jari)
+    [mushafCard, markedCard].forEach(cardEl => {
+      if (!cardEl) return;
+
+      cardEl.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey || scrollWheelDirectZoom) {
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 0.10 : -0.10;
+          applyMushafZoom(mushafZoom + delta);
+        }
+      }, { passive: false });
+
+      let initialPinchDist = null;
+      let initialPinchScale = 1.0;
+
+      cardEl.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialPinchDist = Math.hypot(dx, dy);
+          initialPinchScale = mushafZoom;
+        }
+      }, { passive: true });
+
+      cardEl.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDist && initialPinchDist > 12) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const ratio = dist / initialPinchDist;
+          applyMushafZoom(initialPinchScale * ratio);
+        }
+      }, { passive: false });
+
+      cardEl.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          initialPinchDist = null;
+        }
+      }, { passive: true });
+    });
 
     // Page navigation
     DOM.btnPrevPage.addEventListener('click', () => {

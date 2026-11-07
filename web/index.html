@@ -206,10 +206,11 @@
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
             </svg>
-            <span>Tampilan Lembar Mushaf Madinah</span>
+            <span>Tampilan Lembar Mushaf Madinah (Cubit 2 Jari / Ctrl+Scroll)</span>
           </div>
           <div class="zoom-controls-group">
             <button type="button" id="btn-toggle-single-sheet" class="btn btn-secondary btn-xs active" title="Tampilkan proporsional 1 lembar utuh seperti cetakan Mushaf Madinah">Selembar Mushaf</button>
+            <button type="button" id="btn-toggle-scroll-zoom" class="btn btn-secondary btn-xs" title="Klik agar Scroll Mouse langsung memperbesar/memperkecil Mushaf tanpa tombol Ctrl">Ctrl+Scroll = Zoom</button>
             <button type="button" id="btn-zoom-out" class="btn btn-ghost btn-xs" aria-label="Perkecil Mushaf (Zoom Out)" title="Perkecil Mushaf">−</button>
             <button type="button" id="btn-zoom-reset" class="zoom-pct-badge" title="Klik untuk kembali ke 100%">100%</button>
             <button type="button" id="btn-zoom-in" class="btn btn-ghost btn-xs" aria-label="Perbesar Mushaf (Zoom In)" title="Perbesar Mushaf">+</button>
@@ -287,7 +288,7 @@
         </div>
 
         <!-- Lembaran Mushaf Penuh Bertanda -->
-        <article class="mushaf-page-card marked-page-card">
+        <article class="mushaf-page-card marked-page-card" id="marked-page-container">
           <header class="mushaf-page-header">
             <span class="juz-label" id="marked-juz-label">الجزء ٣٠</span>
             <span class="surah-label" id="marked-surah-label">سُورَةُ النَّبَإِ</span>
