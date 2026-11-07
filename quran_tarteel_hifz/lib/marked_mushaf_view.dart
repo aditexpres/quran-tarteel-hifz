@@ -224,7 +224,7 @@ class _MarkedMushafMutasyabihatViewState
           // Lembaran Mushaf Madinah Penuh (Mendukung Cubit 2 Jari di Android & Scroll Mouse di Desktop tanpa menghalangi Scroll Halaman)
           MushafZoomGestureWrapper(
             zoomScale: _zoomScale,
-            scrollWheelDirectZoom: _scrollWheelDirectZoom,
+            scrollWheelZoomWithoutCtrl: _scrollWheelDirectZoom,
             onZoomChanged: _updateZoom,
             child: Container(
                 decoration: BoxDecoration(
