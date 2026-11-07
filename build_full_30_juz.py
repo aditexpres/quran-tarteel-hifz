@@ -353,19 +353,22 @@ def build_full_30_juz():
 
         # Filter cepat rasio panjang kata
         len_ratio = min(len(tok1), len(tok2)) / max(len(tok1), len(tok2))
-        if len_ratio < 0.55:
+        if len_ratio < 0.50:
             continue
 
         # Jaccard overlap kata
         s1, s2 = set(tok1), set(tok2)
         jaccard = len(s1 & s2) / len(s1 | s2)
-        if jaccard < 0.40:
+        if jaccard < 0.35:
             continue
 
         # Hitung rasio SequenceMatcher token
         ratio = difflib.SequenceMatcher(None, tok1, tok2).ratio()
-        # KUNCI: ratio >= SIMILARITY_THRESHOLD dan MEMPERBOLEHKAN ratio == 1.0 (Ayat Kembar Identik!)
-        if ratio >= SIMILARITY_THRESHOLD:
+        is_short = min(len(tok1), len(tok2)) <= 4
+        threshold = 0.65 if is_short else 0.72
+
+        # KUNCI: ratio >= threshold dan MEMPERBOLEHKAN ratio == 1.0 (Ayat Kembar Identik!)
+        if ratio >= threshold:
             diff1, diff2 = compute_diff_words(tok1, tok2)
             next_words_1 = verse_next_words_map.get(v1["id"], "")
             next_words_2 = verse_next_words_map.get(v2["id"], "")

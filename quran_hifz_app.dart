@@ -2808,7 +2808,7 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Memetakan 497 pasangan ayat serupa di seluruh 30 Juz Al-Qur\'an (termasuk ayat kembar identik 100%) agar hafalan Anda tidak tertukar atau melompat surah.',
+                'Memetakan 633 pasangan ayat serupa di seluruh 30 Juz Al-Qur\'an (termasuk ayat kembar identik 100%) agar hafalan Anda tidak tertukar atau melompat surah.',
                 style: TextStyle(fontSize: 13.5, color: textSecondary),
               ),
               const SizedBox(height: 16),
