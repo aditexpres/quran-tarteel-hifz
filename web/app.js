@@ -28,6 +28,8 @@
     currentRepeat: 0,
     activeScope: 'all',
     searchQuery: '',
+    radarSurahId: null,
+    radarVerseNumber: null,
     keepMicContinuous: false,
     drill: {
       questions: [],
@@ -97,6 +99,7 @@
     surahPickerList: document.getElementById('surah-picker-list'),
 
     // Correction Mode elements
+    corrSurahSelect: document.getElementById('corr-surah-select'),
     corrVerseSelect: document.getElementById('corr-verse-select'),
     btnCorrPrev: document.getElementById('btn-corr-prev'),
     btnCorrNext: document.getElementById('btn-corr-next'),
@@ -157,6 +160,8 @@
     // Radar Mutasyabihat
     radarCardsContainer: document.getElementById('radar-cards-container'),
     radarSearchInput: document.getElementById('radar-search-input'),
+    radarSurahSelect: document.getElementById('radar-surah-select'),
+    radarVerseSelect: document.getElementById('radar-verse-select'),
     scopeBtns: document.querySelectorAll('.filter-actions .btn'),
     mutasyabihatCountBadge: document.getElementById('mutasyabihat-count-badge'),
 
@@ -720,7 +725,58 @@
     const container = DOM.radarCardsContainer;
     container.innerHTML = '';
 
+    // Populate Cascading Dropdown: Pilih Surah
+    if (DOM.radarSurahSelect) {
+      if (DOM.radarSurahSelect.options.length <= 1 && state.data && state.data.surahs) {
+        DOM.radarSurahSelect.innerHTML = '<option value="">Semua Surah (1 - 114)</option>';
+        state.data.surahs.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `QS. ${s.id}. ${s.name_latin} (${s.name_arabic})`;
+          DOM.radarSurahSelect.appendChild(opt);
+        });
+      }
+      DOM.radarSurahSelect.value = state.radarSurahId || '';
+    }
+
+    // Populate Cascading Dropdown: Sub Pilihan Ayat
+    if (DOM.radarVerseSelect) {
+      DOM.radarVerseSelect.innerHTML = '<option value="">Semua Ayat</option>';
+      if (state.radarSurahId && state.data && state.data.mutasyabihat) {
+        const sId = parseInt(state.radarSurahId, 10);
+        const verseSet = new Set();
+        state.data.mutasyabihat.forEach(p => {
+          if (p.surah_id_1 === sId) verseSet.add(p.verse_number_1);
+          if (p.surah_id_2 === sId) verseSet.add(p.verse_number_2);
+        });
+        const sortedVerses = Array.from(verseSet).sort((a, b) => a - b);
+        sortedVerses.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = `Ayat ${v}`;
+          DOM.radarVerseSelect.appendChild(opt);
+        });
+        DOM.radarVerseSelect.disabled = false;
+        DOM.radarVerseSelect.value = state.radarVerseNumber || '';
+      } else {
+        DOM.radarVerseSelect.disabled = true;
+      }
+    }
+
     let pairs = state.data.mutasyabihat || [];
+
+    // Filter Cascading Surah & Sub Ayat
+    if (state.radarSurahId) {
+      const sId = parseInt(state.radarSurahId, 10);
+      pairs = pairs.filter(p => p.surah_id_1 === sId || p.surah_id_2 === sId);
+      if (state.radarVerseNumber) {
+        const vNum = parseInt(state.radarVerseNumber, 10);
+        pairs = pairs.filter(p => 
+          (p.surah_id_1 === sId && p.verse_number_1 === vNum) ||
+          (p.surah_id_2 === sId && p.verse_number_2 === vNum)
+        );
+      }
+    }
 
     // Filter scope
     if (state.activeScope === 'surah') {
@@ -1327,13 +1383,27 @@
     const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
     if (!verses.length || !surah) return;
 
-    // Populate verse select
+    // Populate Cascading Dropdown: Pilih Surah
+    if (DOM.corrSurahSelect) {
+      if (DOM.corrSurahSelect.options.length !== state.data.surahs.length) {
+        DOM.corrSurahSelect.innerHTML = '';
+        state.data.surahs.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `QS. ${s.id}. ${s.name_latin}`;
+          DOM.corrSurahSelect.appendChild(opt);
+        });
+      }
+      DOM.corrSurahSelect.value = state.activeSurahId;
+    }
+
+    // Populate Cascading Dropdown: Sub Pilihan Ayat
     if (DOM.corrVerseSelect) {
       DOM.corrVerseSelect.innerHTML = '';
       verses.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v.verse_number;
-        opt.textContent = `QS. ${surah.name_latin} : Ayat ${v.verse_number}`;
+        opt.textContent = `Ayat ${v.verse_number}`;
         DOM.corrVerseSelect.appendChild(opt);
       });
       if (!verses.some(v => v.verse_number === state.correction.verseNumber)) {
@@ -1758,6 +1828,27 @@
     }
 
     // Correction Mode Listeners
+    if (DOM.corrSurahSelect) {
+      DOM.corrSurahSelect.addEventListener('change', (e) => {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
+        state.activeSurahId = parseInt(e.target.value, 10);
+        state.activeVerseIndex = 0;
+        state.activeWordPosition = 0;
+        state.correction.verseNumber = 1;
+        state.correction.wordResults = [];
+        state.correction.selectedWordIdx = -1;
+        state.correction.lastFinalizedKey = null;
+        if (DOM.surahSelect) DOM.surahSelect.value = state.activeSurahId;
+        renderMushafView();
+        renderMarkedMushafView();
+        renderCorrectionView();
+        if (state.activeScope === 'surah') {
+          renderRadarMutasyabihat();
+        }
+      });
+    }
+
     if (DOM.corrVerseSelect) {
       DOM.corrVerseSelect.addEventListener('change', (e) => {
         stopContinuousSimulation();
@@ -2075,6 +2166,21 @@
       state.searchQuery = e.target.value;
       renderRadarMutasyabihat();
     });
+
+    if (DOM.radarSurahSelect) {
+      DOM.radarSurahSelect.addEventListener('change', (e) => {
+        state.radarSurahId = e.target.value ? parseInt(e.target.value, 10) : null;
+        state.radarVerseNumber = null;
+        renderRadarMutasyabihat();
+      });
+    }
+
+    if (DOM.radarVerseSelect) {
+      DOM.radarVerseSelect.addEventListener('change', (e) => {
+        state.radarVerseNumber = e.target.value ? parseInt(e.target.value, 10) : null;
+        renderRadarMutasyabihat();
+      });
+    }
 
     DOM.scopeBtns.forEach(btn => {
       btn.addEventListener('click', () => {

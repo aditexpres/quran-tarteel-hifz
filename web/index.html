@@ -395,10 +395,14 @@
         <!-- Panel Kontrol Pilihan Ayat & Mikrofon Koreksi -->
         <div class="correction-control-card">
           <div class="correction-top-bar">
-            <div class="correction-ayah-nav">
+            <div class="correction-ayah-nav" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <button id="btn-corr-prev" class="btn btn-secondary btn-sm" title="Ayat Sebelumnya">◄ Ayat Sebelumnya</button>
-              <label for="corr-verse-select" class="sr-only">Pilih Ayat</label>
-              <select id="corr-verse-select" class="select-dropdown sm" aria-label="Pilih Nomor Ayat"></select>
+              <div class="cascading-select-group" style="display:flex; align-items:center; gap:6px;">
+                <label for="corr-surah-select" class="sr-only">Pilih Surah</label>
+                <select id="corr-surah-select" class="select-dropdown sm" aria-label="Pilih Surah" style="font-weight:600;"></select>
+                <label for="corr-verse-select" class="sr-only">Pilih Nomor Ayat</label>
+                <select id="corr-verse-select" class="select-dropdown sm" aria-label="Pilih Nomor Ayat"></select>
+              </div>
               <button id="btn-corr-next" class="btn btn-secondary btn-sm" title="Ayat Selanjutnya">Ayat Selanjutnya ►</button>
             </div>
             <div class="correction-mode-toggles">
@@ -500,19 +504,30 @@
         <div class="radar-header-card">
           <div class="radar-title-group">
             <h2>Radar Mutasyabihat</h2>
-            <p>Memetakan pasangan ayat serupa di Juz 28, 29, dan 30 agar hafalan Anda tidak tertukar atau melompat surah.</p>
+            <p>Memetakan 296 pasangan ayat serupa di seluruh 30 Juz Al-Qur'an agar hafalan Anda tidak tertukar atau melompat surah.</p>
           </div>
 
-          <div class="radar-filter-bar">
-            <div class="search-input-wrapper">
-              <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input" aria-label="Cari mutasyabihat">
+          <div class="radar-filter-bar" style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+              <div class="search-input-wrapper" style="flex:1; min-width:240px;">
+                <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input" aria-label="Cari mutasyabihat">
+              </div>
+
+              <!-- Pilihan Surah dulu baru di Sub Pilihan Ayatnya -->
+              <div class="radar-cascading-nav" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <label for="radar-surah-select" class="sr-only">Filter Surah</label>
+                <select id="radar-surah-select" class="select-dropdown sm" aria-label="Filter Surah" style="font-weight:600;"></select>
+                <label for="radar-verse-select" class="sr-only">Filter Sub Ayat</label>
+                <select id="radar-verse-select" class="select-dropdown sm" aria-label="Filter Sub Ayat"></select>
+              </div>
             </div>
+
             <div class="filter-actions">
-              <button class="btn btn-secondary btn-sm active" data-scope="all">Semua (Juz 28-30)</button>
+              <button class="btn btn-secondary btn-sm active" data-scope="all">Semua (Juz 1-30)</button>
               <button class="btn btn-secondary btn-sm" data-scope="juz30">Juz 30</button>
               <button class="btn btn-secondary btn-sm" data-scope="juz29">Juz 29</button>
               <button class="btn btn-secondary btn-sm" data-scope="juz28">Juz 28</button>

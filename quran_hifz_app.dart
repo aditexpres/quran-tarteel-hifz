@@ -656,6 +656,7 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
             constraints: const BoxConstraints(maxWidth: 1140),
             child: MutasyabihatRadarView(
               pairs: _mutasyabihatPairs,
+              allSurahs: _surahs,
               selectedScope: _selectedScope,
               selectedJuz: _selectedJuz,
               murattalAudioService: _murattalAudioService,
@@ -1835,22 +1836,79 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                               : null,
                           child: const Text('◄ Ayat Sebelumnya'),
                         ),
+                        // 1. Cascading Pilihan Surah
                         Container(
                           height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
+                            color: surfaceColor,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: borderCard),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<int>(
-                              value: _selectedVerseNumber,
+                              value: widget.surah?.id ?? (widget.verses.isNotEmpty ? widget.verses.first.surahId : 1),
+                              dropdownColor: surfaceColor,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFF1F5F3) : const Color(0xFF1E2824),
+                              ),
+                              items: (widget.allSurahs.isNotEmpty
+                                      ? widget.allSurahs
+                                      : (widget.surah != null ? [widget.surah!] : <Surah>[]))
+                                  .map(
+                                    (s) => DropdownMenuItem<int>(
+                                      value: s.id,
+                                      child: Text(
+                                        'QS. ${s.id}. ${s.nameLatin}',
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                final currentSurahId = widget.surah?.id ?? (widget.verses.isNotEmpty ? widget.verses.first.surahId : 1);
+                                if (val != null && val != currentSurahId) {
+                                  _cancelPendingAutoAdvance();
+                                  _lastFinalizedVerseKey = null;
+                                  _transcriptController.clear();
+                                  setState(() {
+                                    _selectedVerseNumber = 1;
+                                    _analysisResult = null;
+                                  });
+                                  widget.onSelectSurah?.call(val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        // 2. Cascading Sub Pilihan Ayat
+                        Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: surfaceColor,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: borderCard),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: widget.verses.any((v) => v.verseNumber == _selectedVerseNumber)
+                                  ? _selectedVerseNumber
+                                  : (widget.verses.isNotEmpty ? widget.verses.first.verseNumber : 1),
+                              dropdownColor: surfaceColor,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFF1F5F3) : const Color(0xFF1E2824),
+                              ),
                               items: widget.verses
                                   .map(
                                     (v) => DropdownMenuItem<int>(
                                       value: v.verseNumber,
                                       child: Text(
-                                        'QS. ${v.surahNameLatin ?? v.surahId} : Ayat ${v.verseNumber}',
+                                        'Ayat ${v.verseNumber}',
                                         style: const TextStyle(fontSize: 13),
                                       ),
                                     ),
@@ -2673,6 +2731,7 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
 
 class MutasyabihatRadarView extends StatefulWidget {
   final List<MutasyabihatComparisonPair> pairs;
+  final List<Surah> allSurahs;
   final MutasyabihatScope selectedScope;
   final int selectedJuz;
   final QuranMurattalAudioService murattalAudioService;
@@ -2683,6 +2742,7 @@ class MutasyabihatRadarView extends StatefulWidget {
   const MutasyabihatRadarView({
     super.key,
     required this.pairs,
+    this.allSurahs = const [],
     required this.selectedScope,
     required this.selectedJuz,
     required this.murattalAudioService,
@@ -2697,6 +2757,8 @@ class MutasyabihatRadarView extends StatefulWidget {
 
 class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
   String _searchQuery = '';
+  int? _filterSurahId;
+  int? _filterVerseNumber;
 
   @override
   Widget build(BuildContext context) {
@@ -2705,8 +2767,18 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
     final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
     final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
     final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+    final textPrimary = isDark ? const Color(0xFFF1F5F3) : const Color(0xFF1E2824);
 
     final filtered = widget.pairs.where((p) {
+      if (_filterSurahId != null) {
+        final matchesSurah = (p.surahId1 == _filterSurahId || p.surahId2 == _filterSurahId);
+        if (!matchesSurah) return false;
+        if (_filterVerseNumber != null) {
+          final matchesVerse = (p.surahId1 == _filterSurahId && p.verseNumber1 == _filterVerseNumber) ||
+                               (p.surahId2 == _filterSurahId && p.verseNumber2 == _filterVerseNumber);
+          if (!matchesVerse) return false;
+        }
+      }
       if (_searchQuery.trim().isEmpty) return true;
       final q = _searchQuery.toLowerCase();
       return p.title.toLowerCase().contains(q) ||
@@ -2736,7 +2808,7 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Memetakan pasangan ayat serupa di Juz 28, 29, dan 30 agar hafalan Anda tidak tertukar atau melompat surah.',
+                'Memetakan 296 pasangan ayat serupa di seluruh 30 Juz Al-Qur\'an agar hafalan Anda tidak tertukar atau melompat surah.',
                 style: TextStyle(fontSize: 13.5, color: textSecondary),
               ),
               const SizedBox(height: 16),
@@ -2747,7 +2819,7 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   SizedBox(
-                    width: 420,
+                    width: 320,
                     child: TextField(
                       onChanged: (v) => setState(() => _searchQuery = v),
                       decoration: InputDecoration(
@@ -2760,12 +2832,111 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
                       ),
                     ),
                   ),
+
+                  // Cascading Dropdowns: Filter Pilihan Surah dulu baru di Sub Pilihan Ayatnya
+                  Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      // Dropdown Surah
+                      Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: borderCard),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: _filterSurahId,
+                            dropdownColor: surfaceColor,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('Semua Surah (1 - 114)'),
+                              ),
+                              ...widget.allSurahs.map(
+                                (s) => DropdownMenuItem<int?>(
+                                  value: s.id,
+                                  child: Text('QS. ${s.id}. ${s.nameLatin}'),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _filterSurahId = val;
+                                _filterVerseNumber = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Dropdown Sub-Ayat
+                      Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: borderCard),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: _filterVerseNumber,
+                            dropdownColor: surfaceColor,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                            items: () {
+                              final availableVerses = <int>{};
+                              if (_filterSurahId != null) {
+                                for (final p in widget.pairs) {
+                                  if (p.surahId1 == _filterSurahId) availableVerses.add(p.verseNumber1);
+                                  if (p.surahId2 == _filterSurahId) availableVerses.add(p.verseNumber2);
+                                }
+                              }
+                              final sorted = availableVerses.toList()..sort();
+                              return [
+                                const DropdownMenuItem<int?>(
+                                  value: null,
+                                  child: Text('Semua Ayat'),
+                                ),
+                                ...sorted.map(
+                                  (v) => DropdownMenuItem<int?>(
+                                    value: v,
+                                    child: Text('Ayat $v'),
+                                  ),
+                                ),
+                              ];
+                            }(),
+                            onChanged: _filterSurahId == null
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _filterVerseNumber = val;
+                                    });
+                                  },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Semua (Juz 28-30)'),
+                        label: const Text('Semua (Juz 1-30)'),
                         selected:
                             widget.selectedScope == MutasyabihatScope.all,
                         onSelected: (_) =>
