@@ -13,12 +13,20 @@ class MarkedMushafMutasyabihatView extends StatefulWidget {
   final List<Verse> verses;
   final List<MutasyabihatComparisonPair> pairs;
   final QuranMurattalAudioService murattalAudioService;
+  final VoidCallback? onPrevSurah;
+  final VoidCallback? onNextSurah;
+  final String? prevSurahName;
+  final String? nextSurahName;
 
   const MarkedMushafMutasyabihatView({
     super.key,
     required this.verses,
     required this.pairs,
     required this.murattalAudioService,
+    this.onPrevSurah,
+    this.onNextSurah,
+    this.prevSurahName,
+    this.nextSurahName,
   });
 
   @override
@@ -221,181 +229,252 @@ class _MarkedMushafMutasyabihatViewState
 
           const SizedBox(height: 16),
 
-          // Lembaran Mushaf Madinah Penuh (Mendukung Cubit 2 Jari di Android & Scroll Mouse di Desktop tanpa menghalangi Scroll Halaman)
-          MushafZoomGestureWrapper(
-            zoomScale: _zoomScale,
-            scrollWheelZoomWithoutCtrl: _scrollWheelDirectZoom,
-            onZoomChanged: _updateZoom,
-            child: Container(
-                decoration: BoxDecoration(
-                  color: pageBg,
-                  border: Border.all(
-                    color: const Color(0xFFC8AA76),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+          // Lembaran Mushaf Madinah Penuh (Mendukung Cubit 2 Jari, Scroll Mouse, dan Swipe Horisontal untuk Pindah Surah)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragEnd: (DragEndDetails details) {
+              final velocity = details.primaryVelocity;
+              if (velocity != null) {
+                if (velocity < -200) {
+                  // Geser ke kiri (Swipe Left) -> Pindah ke Surah Selanjutnya
+                  widget.onNextSurah?.call();
+                } else if (velocity > 200) {
+                  // Geser ke kanan (Swipe Right) -> Pindah ke Surah Sebelumnya
+                  widget.onPrevSurah?.call();
+                }
+              }
+            },
+            child: MushafZoomGestureWrapper(
+              zoomScale: _zoomScale,
+              scrollWheelZoomWithoutCtrl: _scrollWheelDirectZoom,
+              onZoomChanged: _updateZoom,
+              child: Container(
+                  decoration: BoxDecoration(
+                    color: pageBg,
+                    border: Border.all(
+                      color: const Color(0xFFC8AA76),
+                      width: 2,
                     ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // Header Lembaran Mushaf
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'الجزء ${firstVerse.juzNumber}',
-                          style: TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 16 * _zoomScale,
-                            color: const Color(0xFF9B7A38),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'سُورَةُ ${firstVerse.surahNameLatin ?? ''}',
-                          style: TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 20 * _zoomScale,
-                            color: primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${firstVerse.pageNumber}',
-                          style: TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 16 * _zoomScale,
-                            color: const Color(0xFF9B7A38),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 20, color: Color(0xFFC8AA76)),
-
-                    // Basmalah (kecuali At-Taubah)
-                    if (firstVerse.surahId != 9) ...[
-                      Text(
-                        'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Amiri',
-                          fontSize: 22 * _zoomScale,
-                          height: 1.8,
-                        ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      const SizedBox(height: 12),
                     ],
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      // Header Lembaran Mushaf
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'الجزء ${firstVerse.juzNumber}',
+                            style: TextStyle(
+                              fontFamily: 'Amiri',
+                              fontSize: 16 * _zoomScale,
+                              color: const Color(0xFF9B7A38),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'سُورَةُ ${firstVerse.surahNameLatin ?? ''}',
+                            style: TextStyle(
+                              fontFamily: 'Amiri',
+                              fontSize: 20 * _zoomScale,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${firstVerse.pageNumber}',
+                            style: TextStyle(
+                              fontFamily: 'Amiri',
+                              fontSize: 16 * _zoomScale,
+                              color: const Color(0xFF9B7A38),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 20, color: Color(0xFFC8AA76)),
 
-                    // Teks Ayat Mengalir Kontinyu
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 10,
-                        alignment: WrapAlignment.start,
-                        children: widget.verses.map((v) {
-                          final pair = _findPairForVerse(v);
-                          final isMarked = pair != null;
-                          final isSelected = _selectedVerse?.id == v.id;
-                          final isSide1 = pair != null &&
-                              pair.surahId1 == v.surahId &&
-                              pair.verseNumber1 == v.verseNumber;
-                          final twinLabel = pair == null
-                              ? ''
-                              : (isSide1
-                                  ? '${pair.surahName2}:${pair.verseNumber2}'
-                                  : '${pair.surahName1}:${pair.verseNumber1}');
+                      // Basmalah (kecuali At-Taubah)
+                      if (firstVerse.surahId != 9) ...[
+                        Text(
+                          'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Amiri',
+                            fontSize: 22 * _zoomScale,
+                            height: 1.8,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
-                          return MouseRegion(
-                            cursor: isMarked ? SystemMouseCursors.click : SystemMouseCursors.basic,
-                            onEnter: isMarked ? (_) => _selectMarkedVerse(v, pair) : null,
-                            child: GestureDetector(
-                              onTap: isMarked ? () => _selectMarkedVerse(v, pair) : null,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 140),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isMarked ? 10 : 4,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? (isDark ? const Color(0xFF3E3018) : const Color(0xFFF6E7C8))
-                                      : isMarked
-                                          ? (isDark ? const Color(0xFF2B2418) : const Color(0xFFFBF5E8))
-                                          : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: isMarked
-                                      ? Border(
-                                          bottom: BorderSide(
-                                            color: const Color(0xFF9B7A38),
-                                            width: isSelected ? 2.5 : 2.0,
+                      // Teks Ayat Mengalir Kontinyu
+                      Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 10,
+                          alignment: WrapAlignment.start,
+                          children: widget.verses.map((v) {
+                            final pair = _findPairForVerse(v);
+                            final isMarked = pair != null;
+                            final isSelected = _selectedVerse?.id == v.id;
+                            final isSide1 = pair != null &&
+                                pair.surahId1 == v.surahId &&
+                                pair.verseNumber1 == v.verseNumber;
+                            final twinLabel = pair == null
+                                ? ''
+                                : (isSide1
+                                    ? '${pair.surahName2}:${pair.verseNumber2}'
+                                    : '${pair.surahName1}:${pair.verseNumber1}');
+
+                            return MouseRegion(
+                              cursor: isMarked ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                              onEnter: isMarked ? (_) => _selectMarkedVerse(v, pair) : null,
+                              child: GestureDetector(
+                                onTap: isMarked ? () => _selectMarkedVerse(v, pair) : null,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 140),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMarked ? 10 : 4,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? (isDark ? const Color(0xFF3E3018) : const Color(0xFFF6E7C8))
+                                        : isMarked
+                                            ? (isDark ? const Color(0xFF2B2418) : const Color(0xFFFBF5E8))
+                                            : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: isMarked
+                                        ? Border(
+                                            bottom: BorderSide(
+                                              color: const Color(0xFF9B7A38),
+                                              width: isSelected ? 2.5 : 2.0,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          v.textUthmani,
+                                          style: TextStyle(
+                                            fontSize: 23 * _zoomScale,
+                                            height: 1.9,
+                                            color: isDark
+                                                ? const Color(0xFFF3F1EC)
+                                                : const Color(0xFF141816),
+                                            fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
                                           ),
-                                        )
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        v.textUthmani,
-                                        style: TextStyle(
-                                          fontSize: 23 * _zoomScale,
-                                          height: 1.9,
-                                          color: isDark
-                                              ? const Color(0xFFF3F1EC)
-                                              : const Color(0xFF141816),
-                                          fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
                                         ),
                                       ),
-                                    ),
-                                    if (isMarked) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF9B7A38),
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: Text(
-                                          '⇄ $twinLabel',
-                                          textDirection: TextDirection.ltr,
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                      if (isMarked) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF9B7A38),
+                                            borderRadius: BorderRadius.circular(999),
                                           ),
+                                          child: Text(
+                                            '⇄ $twinLabel',
+                                            textDirection: TextDirection.ltr,
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '۝${_toArabicDigits(v.verseNumber)}',
+                                        style: TextStyle(
+                                          fontSize: 18 * _zoomScale,
+                                          color: const Color(0xFF9B7A38),
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '۝${_toArabicDigits(v.verseNumber)}',
-                                      style: TextStyle(
-                                        fontSize: 18 * _zoomScale,
-                                        color: const Color(0xFF9B7A38),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
-                  ],
+
+                      const SizedBox(height: 18),
+                      Divider(height: 1, color: const Color(0xFFC8AA76).withOpacity(0.5)),
+                      const SizedBox(height: 12),
+
+                      // Footer Navigasi Pindah Surah & Indikator Gesture Swipe
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton.icon(
+                            onPressed: widget.onPrevSurah,
+                            icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                            label: Text(
+                              widget.prevSurahName != null
+                                  ? '◄ QS. ${widget.prevSurahName}'
+                                  : '◄ Sebelumnya',
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF242B28) : const Color(0xFFF1EDE4),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.swipe_rounded, size: 15, color: primaryColor),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Swipe Mushaf untuk Pindah Surah',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: mutedColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: widget.onNextSurah,
+                            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                            label: Text(
+                              widget.nextSurahName != null
+                                  ? 'QS. ${widget.nextSurahName} ►'
+                                  : 'Selanjutnya ►',
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+            ),
           ),
 
           const SizedBox(height: 16),

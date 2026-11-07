@@ -496,10 +496,20 @@ EOF
 echo "=================================================================="
 echo " 4. Membangun Database SQLite (quran_master.db) ke assets/db/"
 echo "=================================================================="
-python3 "$SCRIPT_DIR/build_quran_db.py" \
-  --offline-demo \
-  --master-out "$PROJECT_NAME/assets/db/quran_master.db" \
-  --user-out "$PROJECT_NAME/assets/db/user_hifz.db"
+if [ -f "$SCRIPT_DIR/assets/db/quran_master.db" ] && [ $(wc -c < "$SCRIPT_DIR/assets/db/quran_master.db") -gt 1000000 ]; then
+  echo "[Database] Menggunakan quran_master.db 57 Surah (Juz 28, 29, 30) yang sudah ada..."
+  cp "$SCRIPT_DIR/assets/db/quran_master.db" "$PROJECT_NAME/assets/db/quran_master.db"
+  if [ -f "$SCRIPT_DIR/assets/db/user_hifz.db" ]; then
+    cp "$SCRIPT_DIR/assets/db/user_hifz.db" "$PROJECT_NAME/assets/db/user_hifz.db"
+  else
+    touch "$PROJECT_NAME/assets/db/user_hifz.db"
+  fi
+else
+  python3 "$SCRIPT_DIR/build_quran_db.py" \
+    --offline-demo \
+    --master-out "$PROJECT_NAME/assets/db/quran_master.db" \
+    --user-out "$PROJECT_NAME/assets/db/user_hifz.db"
+fi
 
 echo "=================================================================="
 echo " Selesai! Proyek '$PROJECT_NAME' siap dijalankan & diuji:"

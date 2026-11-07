@@ -65,6 +65,7 @@
     
     // Mushaf elements
     mushafLinesContainer: document.getElementById('mushaf-lines-container'),
+    mushafJuzLabel: document.getElementById('mushaf-juz-label'),
     mushafSurahLabel: document.getElementById('mushaf-surah-label'),
     mushafPageLabel: document.getElementById('mushaf-page-label'),
     pageIndicator: document.getElementById('page-indicator'),
@@ -72,11 +73,16 @@
     btnNextPage: document.getElementById('btn-next-page'),
 
     // Marked Mushaf elements
+    markedPageContainer: document.getElementById('marked-page-container'),
     markedJuzLabel: document.getElementById('marked-juz-label'),
     markedSurahLabel: document.getElementById('marked-surah-label'),
     markedPageLabel: document.getElementById('marked-page-label'),
     markedBismillahBar: document.getElementById('marked-bismillah-bar'),
     markedVersesFlow: document.getElementById('marked-verses-flow'),
+    btnMarkedPrevSurah: document.getElementById('btn-marked-prev-surah'),
+    btnMarkedNextSurah: document.getElementById('btn-marked-next-surah'),
+    markedPrevSurahLabel: document.getElementById('marked-prev-surah-label'),
+    markedNextSurahLabel: document.getElementById('marked-next-surah-label'),
     mutasyabihatInspector: document.getElementById('mutasyabihat-inspector'),
     inspectorTitle: document.getElementById('inspector-title'),
     inspectorBody: document.getElementById('inspector-body'),
@@ -292,12 +298,15 @@
     const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
     if (!surah) return;
 
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!verses.length) return;
+
+    const currentJuz = verses[0].juz_number || 30;
+
+    if (DOM.mushafJuzLabel) DOM.mushafJuzLabel.textContent = `الجزء ${toArabicDigits(currentJuz)}`;
     DOM.mushafSurahLabel.textContent = `سُورَةُ ${surah.name_arabic}`;
     DOM.mushafPageLabel.textContent = toArabicDigits(state.activePageNumber);
     DOM.pageIndicator.textContent = `Halaman ${state.activePageNumber}`;
-
-    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
-    if (!verses.length) return;
 
     // Render 15 Baris Mushaf
     DOM.mushafLinesContainer.innerHTML = '';
@@ -433,19 +442,43 @@
   function renderMarkedMushafView() {
     if (!DOM.markedVersesFlow) return;
 
-    const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
+    const surahs = state.data.surahs || [];
+    const surahIdx = surahs.findIndex(s => s.id === state.activeSurahId);
+    const surah = surahs[surahIdx] || surahs[0];
     if (!surah) return;
+
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!verses.length) return;
+
+    const currentJuz = verses[0].juz_number || 30;
 
     if (DOM.markedSurahLabel) DOM.markedSurahLabel.textContent = `سُورَةُ ${surah.name_arabic}`;
     if (DOM.markedPageLabel) DOM.markedPageLabel.textContent = toArabicDigits(state.activePageNumber);
-    if (DOM.markedJuzLabel) DOM.markedJuzLabel.textContent = `الجزء ${toArabicDigits(30)}`;
+    if (DOM.markedJuzLabel) DOM.markedJuzLabel.textContent = `الجزء ${toArabicDigits(currentJuz)}`;
+
+    const prevSurah = surahIdx > 0 ? surahs[surahIdx - 1] : null;
+    const nextSurah = (surahIdx >= 0 && surahIdx + 1 < surahs.length) ? surahs[surahIdx + 1] : null;
+
+    if (DOM.markedPrevSurahLabel) {
+      DOM.markedPrevSurahLabel.textContent = prevSurah ? `◄ QS. ${prevSurah.name_latin}` : '◄ Sebelumnya';
+    }
+    if (DOM.btnMarkedPrevSurah) {
+      DOM.btnMarkedPrevSurah.disabled = !prevSurah;
+      DOM.btnMarkedPrevSurah.style.opacity = prevSurah ? '1' : '0.45';
+      DOM.btnMarkedPrevSurah.style.pointerEvents = prevSurah ? 'auto' : 'none';
+    }
+    if (DOM.markedNextSurahLabel) {
+      DOM.markedNextSurahLabel.textContent = nextSurah ? `QS. ${nextSurah.name_latin} ►` : 'Selanjutnya ►';
+    }
+    if (DOM.btnMarkedNextSurah) {
+      DOM.btnMarkedNextSurah.disabled = !nextSurah;
+      DOM.btnMarkedNextSurah.style.opacity = nextSurah ? '1' : '0.45';
+      DOM.btnMarkedNextSurah.style.pointerEvents = nextSurah ? 'auto' : 'none';
+    }
 
     if (DOM.markedBismillahBar) {
       DOM.markedBismillahBar.style.display = surah.id === 9 ? 'none' : 'block';
     }
-
-    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
-    if (!verses.length) return;
 
     DOM.markedVersesFlow.innerHTML = '';
 
@@ -563,6 +596,12 @@
     // Filter scope
     if (state.activeScope === 'surah') {
       pairs = pairs.filter(p => p.surah_id_1 === state.activeSurahId || p.surah_id_2 === state.activeSurahId);
+    } else if (state.activeScope === 'juz30') {
+      pairs = pairs.filter(p => p.juz_1 === 30 || p.juz_2 === 30);
+    } else if (state.activeScope === 'juz29') {
+      pairs = pairs.filter(p => p.juz_1 === 29 || p.juz_2 === 29);
+    } else if (state.activeScope === 'juz28') {
+      pairs = pairs.filter(p => p.juz_1 === 28 || p.juz_2 === 28);
     }
 
     // Filter search
@@ -1496,6 +1535,69 @@
         renderRadarMutasyabihat();
       }
     });
+
+    function stepSurah(delta) {
+      const surahs = state.data.surahs || [];
+      if (!surahs.length) return;
+      const currIdx = surahs.findIndex(s => s.id === state.activeSurahId);
+      if (currIdx < 0) return;
+      const nextIdx = Math.max(0, Math.min(surahs.length - 1, currIdx + delta));
+      if (nextIdx !== currIdx) {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
+        state.activeSurahId = surahs[nextIdx].id;
+        if (DOM.surahSelect) DOM.surahSelect.value = String(state.activeSurahId);
+        const firstVerse = state.data.verses.find(v => v.surah_id === state.activeSurahId);
+        if (firstVerse) {
+          state.activePageNumber = firstVerse.page_number;
+        }
+        renderMushafView();
+        renderMarkedMushafView();
+        state.correction.verseNumber = 1;
+        state.correction.wordResults = [];
+        state.correction.lastFinalizedKey = null;
+        renderCorrectionView();
+        if (state.activeScope === 'surah') {
+          renderRadarMutasyabihat();
+        }
+      }
+    }
+
+    // Navigasi & Swipe Pindah Surah pada Mode Mushaf Bertanda
+    if (DOM.btnMarkedPrevSurah) {
+      DOM.btnMarkedPrevSurah.addEventListener('click', () => stepSurah(-1));
+    }
+    if (DOM.btnMarkedNextSurah) {
+      DOM.btnMarkedNextSurah.addEventListener('click', () => stepSurah(1));
+    }
+
+    let markedTouchStartX = 0;
+    let markedTouchStartY = 0;
+    if (DOM.markedPageContainer) {
+      DOM.markedPageContainer.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length === 1) {
+          markedTouchStartX = e.touches[0].clientX;
+          markedTouchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      DOM.markedPageContainer.addEventListener('touchend', (e) => {
+        if (e.changedTouches && e.changedTouches.length === 1) {
+          const deltaX = e.changedTouches[0].clientX - markedTouchStartX;
+          const deltaY = e.changedTouches[0].clientY - markedTouchStartY;
+          // Swipe horizontal minimal 50px dan lebih dominan dibanding vertikal
+          if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+            if (deltaX < 0) {
+              // Geser ke kiri -> Surah Selanjutnya
+              stepSurah(1);
+            } else {
+              // Geser ke kanan -> Surah Sebelumnya
+              stepSurah(-1);
+            }
+          }
+        }
+      }, { passive: true });
+    }
 
     // Correction Mode Listeners
     if (DOM.corrVerseSelect) {

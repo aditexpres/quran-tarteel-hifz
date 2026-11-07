@@ -27,6 +27,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 // =============================================================================
 
 enum MutasyabihatScope {
+  all,
   withinOneJuz,
   withinOneSurah,
   crossJuz,
@@ -494,6 +495,9 @@ class QuranHifzRepository {
     final args = <Object?>[];
 
     switch (scope) {
+      case MutasyabihatScope.all:
+        // Tampilkan seluruh pasangan ayat tanpa batasan juz/surah
+        break;
       case MutasyabihatScope.withinOneJuz:
         filterClauses.add('v1.juz_number = v2.juz_number');
         if (juzNumber != null) {

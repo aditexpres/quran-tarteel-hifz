@@ -128,7 +128,7 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
   List<Surah> _surahs = const [];
   List<Verse> _verses = const [];
   List<MutasyabihatComparisonPair> _mutasyabihatPairs = const [];
-  MutasyabihatScope _selectedScope = MutasyabihatScope.withinOneJuz;
+  MutasyabihatScope _selectedScope = MutasyabihatScope.all;
   bool _isLoading = true;
 
   @override
@@ -612,6 +612,12 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
           onShowTafsir: _showTafsirBottomSheet,
         );
       case 1:
+        final surahs = _surahs;
+        final currIdx = surahs.indexWhere((s) => s.id == _selectedSurahId);
+        final prevSurah = currIdx > 0 ? surahs[currIdx - 1] : null;
+        final nextSurah =
+            (currIdx >= 0 && currIdx + 1 < surahs.length) ? surahs[currIdx + 1] : null;
+
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1140),
@@ -619,6 +625,10 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
               verses: _verses,
               pairs: _mutasyabihatPairs,
               murattalAudioService: _murattalAudioService,
+              onPrevSurah: () => _stepSurah(-1),
+              onNextSurah: () => _stepSurah(1),
+              prevSurahName: prevSurah?.nameLatin,
+              nextSurahName: nextSurah?.nameLatin,
             ),
           ),
         );
@@ -2723,7 +2733,7 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Memetakan pasangan ayat serupa di Juz 30 agar hafalan Anda tidak tertukar atau melompat surah.',
+                'Memetakan pasangan ayat serupa di Juz 28, 29, dan 30 agar hafalan Anda tidak tertukar atau melompat surah.',
                 style: TextStyle(fontSize: 13.5, color: textSecondary),
               ),
               const SizedBox(height: 16),
@@ -2749,13 +2759,44 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
                   ),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Semua Juz 30'),
+                        label: const Text('Semua (Juz 28-30)'),
                         selected:
-                            widget.selectedScope == MutasyabihatScope.withinOneJuz,
+                            widget.selectedScope == MutasyabihatScope.all,
                         onSelected: (_) =>
-                            widget.onScopeChanged(MutasyabihatScope.withinOneJuz),
+                            widget.onScopeChanged(MutasyabihatScope.all),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Juz 30'),
+                        selected:
+                            widget.selectedScope == MutasyabihatScope.withinOneJuz &&
+                                widget.selectedJuz == 30,
+                        onSelected: (_) {
+                          widget.onJuzChanged(30);
+                          widget.onScopeChanged(MutasyabihatScope.withinOneJuz);
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Juz 29'),
+                        selected:
+                            widget.selectedScope == MutasyabihatScope.withinOneJuz &&
+                                widget.selectedJuz == 29,
+                        onSelected: (_) {
+                          widget.onJuzChanged(29);
+                          widget.onScopeChanged(MutasyabihatScope.withinOneJuz);
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Juz 28'),
+                        selected:
+                            widget.selectedScope == MutasyabihatScope.withinOneJuz &&
+                                widget.selectedJuz == 28,
+                        onSelected: (_) {
+                          widget.onJuzChanged(28);
+                          widget.onScopeChanged(MutasyabihatScope.withinOneJuz);
+                        },
                       ),
                       ChoiceChip(
                         label: const Text('Surah Ini'),
@@ -2763,12 +2804,6 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
                             widget.selectedScope == MutasyabihatScope.withinOneSurah,
                         onSelected: (_) =>
                             widget.onScopeChanged(MutasyabihatScope.withinOneSurah),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Lintas Juz'),
-                        selected: widget.selectedScope == MutasyabihatScope.crossJuz,
-                        onSelected: (_) =>
-                            widget.onScopeChanged(MutasyabihatScope.crossJuz),
                       ),
                     ],
                   ),

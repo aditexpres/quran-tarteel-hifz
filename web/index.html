@@ -303,6 +303,32 @@
           <div class="marked-verses-flow" id="marked-verses-flow" dir="rtl">
             <!-- Disusun secara dinamis oleh JavaScript -->
           </div>
+
+          <!-- Footer Halaman & Navigasi Pindah Surah / Swipe -->
+          <footer class="mushaf-page-footer">
+            <div class="page-nav-row">
+              <button type="button" id="btn-marked-prev-surah" class="btn btn-ghost btn-sm" aria-label="Surah Sebelumnya">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span id="marked-prev-surah-label">◄ Sebelumnya</span>
+              </button>
+              <div class="marked-swipe-badge" id="marked-swipe-badge" title="Sentuh dan geser layar ke kiri atau kanan untuk berpindah surah" style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; opacity:0.85; padding:4px 10px; border-radius:999px; border:1px solid var(--border-card);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="7 8 3 12 7 16"></polyline>
+                  <polyline points="17 8 21 12 17 16"></polyline>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                </svg>
+                <span>Swipe Mushaf untuk Pindah Surah</span>
+              </div>
+              <button type="button" id="btn-marked-next-surah" class="btn btn-ghost btn-sm" aria-label="Surah Selanjutnya">
+                <span id="marked-next-surah-label">Selanjutnya ►</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
+          </footer>
         </article>
 
         <!-- Inspector Drawer: Muncul saat ayat mutasyabihat dihover atau disentuh -->
@@ -446,7 +472,7 @@
         <div class="radar-header-card">
           <div class="radar-title-group">
             <h2>Radar Mutasyabihat</h2>
-            <p>Memetakan pasangan ayat serupa di Juz 30 agar hafalan Anda tidak tertukar atau melompat surah.</p>
+            <p>Memetakan pasangan ayat serupa di Juz 28, 29, dan 30 agar hafalan Anda tidak tertukar atau melompat surah.</p>
           </div>
 
           <div class="radar-filter-bar">
@@ -458,7 +484,10 @@
               <input type="text" id="radar-search-input" placeholder="Cari nama surah atau potongan ayat..." class="search-input" aria-label="Cari mutasyabihat">
             </div>
             <div class="filter-actions">
-              <button class="btn btn-secondary btn-sm active" data-scope="all">Semua Juz 30</button>
+              <button class="btn btn-secondary btn-sm active" data-scope="all">Semua (Juz 28-30)</button>
+              <button class="btn btn-secondary btn-sm" data-scope="juz30">Juz 30</button>
+              <button class="btn btn-secondary btn-sm" data-scope="juz29">Juz 29</button>
+              <button class="btn btn-secondary btn-sm" data-scope="juz28">Juz 28</button>
               <button class="btn btn-secondary btn-sm" data-scope="surah">Surah Ini</button>
             </div>
           </div>
