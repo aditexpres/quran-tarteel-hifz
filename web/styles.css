@@ -1782,3 +1782,38 @@ html.dark .corr-word-chip.status-wrong {
     font-size: 1.25rem;
   }
 }
+
+/* ==========================================================================
+   14. SURAH PICKER DIALOG (KLIK & SCROLL 114 SURAH)
+   ========================================================================== */
+.surah-label-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  color: inherit;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.surah-label-btn:hover {
+  background-color: var(--hover-card);
+}
+
+.marked-swipe-badge-btn {
+  transition: all 0.15s ease;
+}
+
+.marked-swipe-badge-btn:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.surah-picker-item:hover {
+  border-color: var(--primary) !important;
+  background-color: var(--hover-card) !important;
+}

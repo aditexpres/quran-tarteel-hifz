@@ -76,6 +76,10 @@
     markedPageContainer: document.getElementById('marked-page-container'),
     markedJuzLabel: document.getElementById('marked-juz-label'),
     markedSurahLabel: document.getElementById('marked-surah-label'),
+    btnMarkedSurahLabel: document.getElementById('btn-marked-surah-label'),
+    btnMarkedBannerPicker: document.getElementById('btn-marked-banner-picker'),
+    btnMarkedSwipePicker: document.getElementById('btn-marked-swipe-picker'),
+    markedPickerBadgeText: document.getElementById('marked-picker-badge-text'),
     markedPageLabel: document.getElementById('marked-page-label'),
     markedBismillahBar: document.getElementById('marked-bismillah-bar'),
     markedVersesFlow: document.getElementById('marked-verses-flow'),
@@ -87,6 +91,10 @@
     inspectorTitle: document.getElementById('inspector-title'),
     inspectorBody: document.getElementById('inspector-body'),
     btnCloseInspector: document.getElementById('btn-close-inspector'),
+    surahPickerModal: document.getElementById('surah-picker-modal'),
+    btnCloseSurahPicker: document.getElementById('btn-close-surah-picker'),
+    surahPickerSearch: document.getElementById('surah-picker-search'),
+    surahPickerList: document.getElementById('surah-picker-list'),
 
     // Correction Mode elements
     corrVerseSelect: document.getElementById('corr-verse-select'),
@@ -476,6 +484,13 @@
       DOM.btnMarkedNextSurah.style.pointerEvents = nextSurah ? 'auto' : 'none';
     }
 
+    if (DOM.markedPickerBadgeText) {
+      DOM.markedPickerBadgeText.textContent = `QS. ${surah.name_latin} (${surah.id}/114) ▾`;
+    }
+    if (DOM.btnMarkedBannerPicker) {
+      DOM.btnMarkedBannerPicker.textContent = `📖 Pilih Surah: QS. ${surah.name_latin} ▾`;
+    }
+
     if (DOM.markedBismillahBar) {
       DOM.markedBismillahBar.style.display = surah.id === 9 ? 'none' : 'block';
     }
@@ -581,6 +596,120 @@
         const v = parseInt(e.currentTarget.dataset.verse, 10);
         playMurattalAudio(s, v);
       });
+    });
+  }
+
+  // =========================================================================
+  // 4C. MODAL PEMILIH SURAH (KLIK & SCROLL 114 SURAH)
+  // =========================================================================
+  function openSurahPickerModal() {
+    if (!DOM.surahPickerModal) return;
+    DOM.surahPickerModal.classList.remove('hidden');
+    if (DOM.surahPickerSearch) {
+      DOM.surahPickerSearch.value = '';
+      setTimeout(() => DOM.surahPickerSearch.focus(), 100);
+    }
+    renderSurahPickerList('');
+
+    // Scroll otomatis ke surah aktif
+    setTimeout(() => {
+      const activeEl = DOM.surahPickerList?.querySelector('.surah-picker-item.active');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  }
+
+  function closeSurahPickerModal() {
+    if (!DOM.surahPickerModal) return;
+    DOM.surahPickerModal.classList.add('hidden');
+  }
+
+  function renderSurahPickerList(query = '') {
+    if (!DOM.surahPickerList) return;
+    DOM.surahPickerList.innerHTML = '';
+
+    const surahs = state.data.surahs || [];
+    const q = (query || '').toLowerCase().trim();
+
+    const filtered = surahs.filter(s => {
+      if (!q) return true;
+      return s.name_latin.toLowerCase().includes(q) ||
+        s.translation_id.toLowerCase().includes(q) ||
+        s.name_arabic.includes(q) ||
+        String(s.id) === q;
+    });
+
+    if (!filtered.length) {
+      DOM.surahPickerList.innerHTML = `
+        <div style="text-align:center; padding:30px; color:var(--text-secondary);">
+          Tidak ditemukan surah yang cocok dengan "${query}".
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(s => {
+      const isSelected = s.id === state.activeSurahId;
+      const item = document.createElement('div');
+      item.className = `surah-picker-item ${isSelected ? 'active' : ''}`;
+      item.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid ${isSelected ? 'var(--primary)' : 'var(--border-card)'};
+        background: ${isSelected ? 'var(--accent-glow, rgba(22,91,51,0.08))' : 'var(--bg-card)'};
+        cursor: pointer;
+        transition: all 0.15s ease;
+      `;
+
+      item.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:${isSelected ? 'var(--primary)' : 'var(--border-card)'}; color:${isSelected ? '#fff' : 'inherit'}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;">
+            ${s.id}
+          </div>
+          <div>
+            <div style="font-weight:700; font-size:14px; color:${isSelected ? 'var(--primary)' : 'inherit'};">
+              QS. ${s.name_latin} ${isSelected ? '✓' : ''}
+            </div>
+            <div style="font-size:11.5px; opacity:0.75;">
+              ${s.translation_id} • ${s.total_verses} Ayat • ${s.revelation_type === 'madaniyah' ? 'Madaniyah' : 'Makkiyah'}
+            </div>
+          </div>
+        </div>
+        <div style="font-family:'Amiri', serif; font-size:20px; font-weight:700; color:var(--gold, #9B7A38);">
+          ${s.name_arabic}
+        </div>
+      `;
+
+      item.addEventListener('click', () => {
+        closeSurahPickerModal();
+        if (s.id !== state.activeSurahId) {
+          stopContinuousSimulation();
+          cancelCorrAutoAdvance(true);
+          state.activeSurahId = s.id;
+          const firstVerse = state.data.verses.find(v => v.surah_id === s.id);
+          if (firstVerse) {
+            state.activePageNumber = firstVerse.page_number;
+          }
+          if (DOM.surahSelect) DOM.surahSelect.value = s.id;
+          renderMushafView();
+          renderMarkedMushafView();
+          if (typeof renderCorrectionView === 'function') {
+            state.correction.verseNumber = 1;
+            state.correction.wordResults = [];
+            state.correction.lastFinalizedKey = null;
+            renderCorrectionView();
+          }
+          if (typeof renderRadarMutasyabihat === 'function') {
+            renderRadarMutasyabihat();
+          }
+        }
+      });
+
+      DOM.surahPickerList.appendChild(item);
     });
   }
 
@@ -1570,6 +1699,35 @@
     if (DOM.btnMarkedNextSurah) {
       DOM.btnMarkedNextSurah.addEventListener('click', () => stepSurah(1));
     }
+
+    // Modal Pemilih Surah Lengkap (Klik & Scroll 114 Surah)
+    if (DOM.btnMarkedBannerPicker) {
+      DOM.btnMarkedBannerPicker.addEventListener('click', openSurahPickerModal);
+    }
+    if (DOM.btnMarkedSurahLabel) {
+      DOM.btnMarkedSurahLabel.addEventListener('click', openSurahPickerModal);
+    }
+    if (DOM.btnMarkedSwipePicker) {
+      DOM.btnMarkedSwipePicker.addEventListener('click', openSurahPickerModal);
+    }
+    if (DOM.btnCloseSurahPicker) {
+      DOM.btnCloseSurahPicker.addEventListener('click', closeSurahPickerModal);
+    }
+    if (DOM.surahPickerModal) {
+      DOM.surahPickerModal.addEventListener('click', (e) => {
+        if (e.target === DOM.surahPickerModal) closeSurahPickerModal();
+      });
+    }
+    if (DOM.surahPickerSearch) {
+      DOM.surahPickerSearch.addEventListener('input', (e) => {
+        renderSurahPickerList(e.target.value);
+      });
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && DOM.surahPickerModal && !DOM.surahPickerModal.classList.contains('hidden')) {
+        closeSurahPickerModal();
+      }
+    });
 
     let markedTouchStartX = 0;
     let markedTouchStartY = 0;

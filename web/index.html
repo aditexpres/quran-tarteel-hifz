@@ -281,17 +281,23 @@
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
           </div>
-          <div>
+          <div style="flex:1;">
             <h3>Mode Mushaf Bertanda Mutasyabihat</h3>
             <p>Membaca seluruh Al-Qur'an secara penuh. Ayat yang memiliki kembaran ditandai khusus — <strong>arahkan kursor atau sentuh</strong> untuk menyorot dan langsung melihat surah serta ayat kembarannya.</p>
           </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-marked-banner-picker" style="align-self:center;">
+            📖 Pilih Surah (1 - 114) ▾
+          </button>
         </div>
 
         <!-- Lembaran Mushaf Penuh Bertanda -->
         <article class="mushaf-page-card marked-page-card" id="marked-page-container">
           <header class="mushaf-page-header">
             <span class="juz-label" id="marked-juz-label">الجزء ٣٠</span>
-            <span class="surah-label" id="marked-surah-label">سُورَةُ النَّبَإِ</span>
+            <button type="button" class="surah-label-btn" id="btn-marked-surah-label" title="Klik untuk membuka daftar surah lengkap (1 - 114)" style="background:none; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font:inherit; color:inherit;">
+              <span class="surah-label" id="marked-surah-label">سُورَةُ النَّبَإِ</span>
+              <span style="font-size:14px; opacity:0.75;">▾</span>
+            </button>
             <span class="page-label" id="marked-page-label">٥٨٢</span>
           </header>
 
@@ -313,14 +319,14 @@
                 </svg>
                 <span id="marked-prev-surah-label">◄ Sebelumnya</span>
               </button>
-              <div class="marked-swipe-badge" id="marked-swipe-badge" title="Sentuh dan geser layar ke kiri atau kanan untuk berpindah surah" style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; opacity:0.85; padding:4px 10px; border-radius:999px; border:1px solid var(--border-card);">
+              <button type="button" class="marked-swipe-badge-btn" id="btn-marked-swipe-picker" title="Klik untuk membuka pilihan surah atau geser layar untuk pindah surah" style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; opacity:0.95; padding:5px 12px; border-radius:999px; border:1px solid var(--border-card); background:var(--bg-card); cursor:pointer; color:inherit;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="7 8 3 12 7 16"></polyline>
-                  <polyline points="17 8 21 12 17 16"></polyline>
-                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                <span>Swipe Mushaf untuk Pindah Surah</span>
-              </div>
+                <span id="marked-picker-badge-text">Pilih Surah (1 - 114) ▾</span>
+                <span style="font-size:11px; opacity:0.65; margin-left:2px;">| Swipe</span>
+              </button>
               <button type="button" id="btn-marked-next-surah" class="btn btn-ghost btn-sm" aria-label="Surah Selanjutnya">
                 <span id="marked-next-surah-label">Selanjutnya ►</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -342,6 +348,28 @@
           </div>
           <div class="inspector-body" id="inspector-body">
             <p class="inspector-placeholder">Arahkan kursor atau sentuh ayat yang memiliki tanda emas di atas untuk melihat detail perbandingan ayat mirip, kata pembeda, dan sambungan surahnya.</p>
+          </div>
+        </div>
+
+        <!-- Modal Pemilih Surah Lengkap (Klik & Scroll 114 Surah) -->
+        <div id="surah-picker-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="surah-picker-title" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(3px);">
+          <div class="modal-content surah-picker-dialog" style="max-width:540px; width:92%; max-height:85vh; display:flex; flex-direction:column; background:var(--bg-surface, #fff); border-radius:16px; border:1px solid var(--border-card); box-shadow:0 12px 36px rgba(0,0,0,0.22); overflow:hidden;">
+            <header class="modal-header" style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border-card);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <h3 id="surah-picker-title" style="margin:0; font-size:16px; font-weight:700;">Pilih Surah Al-Qur'an (1 - 114)</h3>
+              </div>
+              <button type="button" id="btn-close-surah-picker" class="btn btn-ghost btn-xs" aria-label="Tutup" style="font-size:18px; line-height:1; padding:4px 8px;">✕</button>
+            </header>
+            <div class="surah-picker-search-bar" style="padding:10px 16px; border-bottom:1px solid var(--border-card); background:var(--bg-card);">
+              <input type="text" id="surah-picker-search" class="search-input" placeholder="Cari nama surah (Latin/Arab), arti, atau nomor..." aria-label="Cari surah" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div class="surah-picker-scroll-list" id="surah-picker-list" role="listbox" style="flex:1; max-height:60vh; overflow-y:auto; padding:10px 14px; display:flex; flex-direction:column; gap:6px;">
+              <!-- Item 114 surah dirender via JS -->
+            </div>
           </div>
         </div>
       </div>

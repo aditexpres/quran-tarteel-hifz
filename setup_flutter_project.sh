@@ -497,7 +497,7 @@ echo "=================================================================="
 echo " 4. Membangun Database SQLite (quran_master.db) ke assets/db/"
 echo "=================================================================="
 if [ -f "$SCRIPT_DIR/assets/db/quran_master.db" ] && [ $(wc -c < "$SCRIPT_DIR/assets/db/quran_master.db") -gt 1000000 ]; then
-  echo "[Database] Menggunakan quran_master.db 57 Surah (Juz 28, 29, 30) yang sudah ada..."
+  echo "[Database] Menggunakan quran_master.db Lengkap 30 Juz (114 Surah, 6.236 Ayat) yang sudah ada..."
   cp "$SCRIPT_DIR/assets/db/quran_master.db" "$PROJECT_NAME/assets/db/quran_master.db"
   if [ -f "$SCRIPT_DIR/assets/db/user_hifz.db" ]; then
     cp "$SCRIPT_DIR/assets/db/user_hifz.db" "$PROJECT_NAME/assets/db/user_hifz.db"

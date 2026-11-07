@@ -13,6 +13,9 @@ class MarkedMushafMutasyabihatView extends StatefulWidget {
   final List<Verse> verses;
   final List<MutasyabihatComparisonPair> pairs;
   final QuranMurattalAudioService murattalAudioService;
+  final List<Surah> surahs;
+  final int currentSurahId;
+  final void Function(int surahId)? onSelectSurah;
   final VoidCallback? onPrevSurah;
   final VoidCallback? onNextSurah;
   final String? prevSurahName;
@@ -23,6 +26,9 @@ class MarkedMushafMutasyabihatView extends StatefulWidget {
     required this.verses,
     required this.pairs,
     required this.murattalAudioService,
+    this.surahs = const [],
+    this.currentSurahId = 1,
+    this.onSelectSurah,
     this.onPrevSurah,
     this.onNextSurah,
     this.prevSurahName,
@@ -71,6 +77,31 @@ class _MarkedMushafMutasyabihatViewState
       _selectedVerse = verse;
       _selectedPair = pair;
     });
+  }
+
+  Surah? get _activeSurah {
+    if (widget.surahs.isEmpty) return null;
+    return widget.surahs.firstWhere(
+      (s) => s.id == widget.currentSurahId,
+      orElse: () => widget.surahs.first,
+    );
+  }
+
+  void _showSurahPicker(BuildContext context) {
+    if (widget.surahs.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SurahPickerSheet(
+        surahs: widget.surahs,
+        currentSurahId: widget.currentSurahId,
+        onSelectSurah: (id) {
+          Navigator.pop(ctx);
+          widget.onSelectSurah?.call(id);
+        },
+      ),
+    );
   }
 
   @override
@@ -221,6 +252,25 @@ class _MarkedMushafMutasyabihatViewState
                       onPressed: () => _updateZoom(_zoomScale + 0.15),
                       icon: Icon(Icons.add_circle_outline_rounded, size: 20, color: mutedColor),
                     ),
+                    if (widget.surahs.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF37423C) : const Color(0xFFD6BD8A),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _showSurahPicker(context),
+                        icon: const Icon(Icons.menu_book_rounded, size: 16),
+                        label: Text(
+                          'Pilih Surah: QS. ${_activeSurah?.nameLatin ?? firstVerse.surahNameLatin ?? ""} ▾',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -280,13 +330,31 @@ class _MarkedMushafMutasyabihatViewState
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(
-                            'سُورَةُ ${firstVerse.surahNameLatin ?? ''}',
-                            style: TextStyle(
-                              fontFamily: 'Amiri',
-                              fontSize: 20 * _zoomScale,
-                              color: primaryColor,
-                              fontWeight: FontWeight.bold,
+                          InkWell(
+                            onTap: () => _showSurahPicker(context),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'سُورَةُ ${_activeSurah?.nameArabic ?? firstVerse.surahNameLatin ?? ''}',
+                                    style: TextStyle(
+                                      fontFamily: 'Amiri',
+                                      fontSize: 20 * _zoomScale,
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_drop_down_rounded,
+                                    size: 22 * _zoomScale,
+                                    color: primaryColor,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           Text(
@@ -434,29 +502,41 @@ class _MarkedMushafMutasyabihatViewState
                               style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF242B28) : const Color(0xFFF1EDE4),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.swipe_rounded, size: 15, color: primaryColor),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Swipe Mushaf untuk Pindah Surah',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: mutedColor,
-                                  ),
+                          InkWell(
+                            onTap: () => _showSurahPicker(context),
+                            borderRadius: BorderRadius.circular(999),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF242B28) : const Color(0xFFF1EDE4),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6),
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.list_alt_rounded, size: 15, color: primaryColor),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Pilih Surah (1 - ${widget.surahs.isNotEmpty ? widget.surahs.length : 114}) ▾',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '| Swipe',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: mutedColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           TextButton.icon(
@@ -748,5 +828,285 @@ class _MarkedMushafMutasyabihatViewState
   static String _toArabicDigits(int num) {
     const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     return num.toString().split('').map((d) => digits[int.parse(d)]).join();
+  }
+}
+
+// ==============================================================================
+// Bottom Sheet Pemilih Surah Al-Qur'an (1 - 114) dengan Pencarian & Scroll Mulus
+// ==============================================================================
+
+class _SurahPickerSheet extends StatefulWidget {
+  final List<Surah> surahs;
+  final int currentSurahId;
+  final ValueChanged<int> onSelectSurah;
+
+  const _SurahPickerSheet({
+    required this.surahs,
+    required this.currentSurahId,
+    required this.onSelectSurah,
+  });
+
+  @override
+  State<_SurahPickerSheet> createState() => _SurahPickerSheetState();
+}
+
+class _SurahPickerSheetState extends State<_SurahPickerSheet> {
+  String _query = '';
+  late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && widget.surahs.isNotEmpty) {
+        final idx = widget.surahs.indexWhere((s) => s.id == widget.currentSurahId);
+        if (idx > 0) {
+          final target = (idx * 68.0).clamp(0.0, _scrollController.position.maxScrollExtent);
+          _scrollController.animateTo(
+            target,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final bgColor = isDark ? const Color(0xFF181D1A) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF222824) : const Color(0xFFFAF7F2);
+    final borderColor = isDark ? const Color(0xFF323B37) : const Color(0xFFE2DDD3);
+
+    final filtered = widget.surahs.where((s) {
+      if (_query.trim().isEmpty) return true;
+      final q = _query.toLowerCase().trim();
+      return s.nameLatin.toLowerCase().contains(q) ||
+          s.translationId.toLowerCase().contains(q) ||
+          s.nameArabic.contains(q) ||
+          s.id.toString() == q;
+    }).toList();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.82,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: const Border(
+          top: BorderSide(color: Color(0xFFC8AA76), width: 2),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 16,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 44,
+              height: 4.5,
+              decoration: BoxDecoration(
+                color: borderColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.menu_book_rounded, color: primaryColor, size: 22),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Pilih Surah (1 - ${widget.surahs.length})',
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  tooltip: 'Tutup',
+                ),
+              ],
+            ),
+          ),
+
+          // Search Field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Cari nama surah (Latin/Arab), terjemahan, atau nomor...',
+                prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: primaryColor, width: 1.6),
+                ),
+                filled: true,
+                fillColor: cardBg,
+                isDense: true,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Scrollable List of Surahs
+          Expanded(
+            child: filtered.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Tidak ada surah yang cocok.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.separated(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final surah = filtered[index];
+                      final isSelected = surah.id == widget.currentSurahId;
+
+                      return InkWell(
+                        onTap: () => widget.onSelectSurah(surah.id),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDark ? const Color(0xFF1D3528) : const Color(0xFFE9F3ED))
+                                : cardBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? primaryColor
+                                  : borderColor.withOpacity(0.6),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Nomor Surah
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? primaryColor : borderColor.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${surah.id}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white : null,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+
+                              // Nama Latin & Terjemahan
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'QS. ${surah.nameLatin}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected ? primaryColor : null,
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          const SizedBox(width: 6),
+                                          Icon(Icons.check_circle_rounded, size: 16, color: primaryColor),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${surah.translationId} • ${surah.totalVerses} Ayat • ${surah.revelationType == 'madaniyah' ? 'Madaniyah' : 'Makkiyah'}',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Nama Arab Surah
+                              Text(
+                                surah.nameArabic,
+                                style: const TextStyle(
+                                  fontFamily: 'Amiri',
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF9B7A38),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }
