@@ -1,0 +1,16 @@
+PANDUAN INSTALASI QUR'AN TARTEEL HIFZ DI MACOS:
+================================================
+
+PILIHAN 1 (Paling Mudah - 1 Klik Otomatis):
+- Klik dua kali file "Buka Aplikasi (Klik Dua Kali).command" di jendela ini.
+- Aplikasi akan otomatis disalin ke folder Applications, dibuka izin keamanannya, dan langsung dijalankan.
+
+PILIHAN 2 (Drag and Drop Standar):
+1. Tarik ikon "Qur'an Tarteel Hifz.app" ke folder shortcut "Applications".
+2. Buka folder Applications di Finder Mac Anda.
+3. Klik kanan (atau Control + Klik) pada "Qur'an Tarteel Hifz" -> klik "Open".
+4. Saat muncul dialog konfirmasi pengembang, klik "Open" / "Buka Tetap".
+
+PILIHAN 3 (Jika Menggunakan File .PKG Installer):
+- Cukup klik dua kali file "QuranTarteelHifz-macOS-Universal.pkg".
+- Ikuti panduan wizard instalasi macOS seperti aplikasi biasa hingga selesai.
