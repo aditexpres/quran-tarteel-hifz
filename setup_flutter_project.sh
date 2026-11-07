@@ -457,32 +457,22 @@ class ApkFileProvider : ContentProvider() {
 EOF
 
 echo "=================================================================="
-echo " 3b. Memasang Keystore Permanen (~/.android/debug.keystore)"
-echo "     Agar Update APK Tidak Pernah Konflik Signature Antar Versi"
+echo " 3b. Memasang Keystore Produksi Deterministik (Anti-Conflict Update)"
+echo "     Konfigurasi signingConfigs.release di build.gradle.kts & key.properties"
 echo "=================================================================="
+mkdir -p "$PROJECT_NAME/android/app"
 mkdir -p "$HOME/.android"
-if [ -f "$SCRIPT_DIR/signing/release_cert.pem" ] && [ -f "$SCRIPT_DIR/signing/release_key.pem" ] && command -v openssl >/dev/null 2>&1 && command -v keytool >/dev/null 2>&1; then
-  rm -f "$HOME/.android/debug.keystore" /tmp/quran_debug.p12
-  openssl pkcs12 -export \
-    -in "$SCRIPT_DIR/signing/release_cert.pem" \
-    -inkey "$SCRIPT_DIR/signing/release_key.pem" \
-    -out /tmp/quran_debug.p12 \
-    -name androiddebugkey \
-    -passout pass:android
-  keytool -importkeystore \
-    -srckeystore /tmp/quran_debug.p12 \
-    -srcstoretype PKCS12 \
-    -srcstorepass android \
-    -destkeystore "$HOME/.android/debug.keystore" \
-    -deststoretype JKS \
-    -deststorepass android \
-    -destkeypass android \
-    -noprompt
-  rm -f /tmp/quran_debug.p12
-  echo "[Keystore] Berhasil memasang JKS deterministik ke $HOME/.android/debug.keystore"
-elif [ -f "$SCRIPT_DIR/signing/debug.keystore" ]; then
-  cp "$SCRIPT_DIR/signing/debug.keystore" "$HOME/.android/debug.keystore"
-  echo "[Keystore] Berhasil menyalin debug.keystore deterministik ke $HOME/.android/debug.keystore"
+
+# Salin Keystore PKCS12 permanen ke dalam android/app/ dan ke ~/.android/
+if [ -f "$SCRIPT_DIR/signing/quran_release.keystore" ]; then
+  cp "$SCRIPT_DIR/signing/quran_release.keystore" "$PROJECT_NAME/android/app/quran_release.keystore"
+  cp "$SCRIPT_DIR/signing/quran_release.keystore" "$HOME/.android/debug.keystore"
+  echo "[Keystore] Berhasil menyalin quran_release.keystore ke android/app/ & ~/.android/debug.keystore"
+fi
+
+# Terapkan patch otomatis ke build.gradle.kts / build.gradle
+if [ -f "$SCRIPT_DIR/patch_android_signing.py" ]; then
+  python3 "$SCRIPT_DIR/patch_android_signing.py" "$PROJECT_NAME"
 fi
 
 MACOS_ENTITLEMENTS="$PROJECT_NAME/macos/Runner/DebugProfile.entitlements"
