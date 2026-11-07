@@ -13,6 +13,7 @@
 // 5. Drill Sambung Ayat (Kuis Interaktif Anti-Lompat Surah)
 // =============================================================================
 
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -185,7 +186,9 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
   Future<void> _onSurahChanged(int newSurahId) async {
     setState(() {
       _selectedSurahId = newSurahId;
-      _isLoading = true;
+      if (_verses.isEmpty) {
+        _isLoading = true;
+      }
     });
     final verses = await _repository.getVerses(
       surahId: newSurahId,
@@ -208,6 +211,16 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
         revealAllInitially: !_hideVerseMode,
       );
     }
+  }
+
+  Future<Surah?> _advanceToNextSurah() async {
+    if (_surahs.isEmpty) return null;
+    final idx = _surahs.indexWhere((s) => s.id == _selectedSurahId);
+    if (idx < 0) return null;
+    final nextIdx = (idx + 1) < _surahs.length ? (idx + 1) : 0;
+    final nextSurah = _surahs[nextIdx];
+    await _onSurahChanged(nextSurah.id);
+    return nextSurah;
   }
 
   Future<void> _refreshMutasyabihatRadar({
@@ -616,8 +629,11 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
             child: RecitationCorrectionView(
               verses: _verses,
               surah: surah,
+              allSurahs: _surahs,
               voiceController: _voiceController,
               murattalAudioService: _murattalAudioService,
+              onAdvanceToNextSurah: _advanceToNextSurah,
+              onSelectSurah: _onSurahChanged,
             ),
           ),
         );
@@ -1327,18 +1343,42 @@ class MushafVoiceHifzView extends StatelessWidget {
 // 3. TAB 3: MODE LATIHAN & KOREKSI BACAAN PER KATA (ALA TARTEEL - IDENTIK WEB)
 // =============================================================================
 
+class _EvaluatedVerseHistoryItem {
+  final int surahId;
+  final String surahNameLatin;
+  final int verseNumber;
+  final String textUthmani;
+  final VerseMistakeAnalysisResult result;
+  final bool isAllCorrect;
+
+  const _EvaluatedVerseHistoryItem({
+    required this.surahId,
+    required this.surahNameLatin,
+    required this.verseNumber,
+    required this.textUthmani,
+    required this.result,
+    required this.isAllCorrect,
+  });
+}
+
 class RecitationCorrectionView extends StatefulWidget {
   final List<Verse> verses;
   final Surah? surah;
+  final List<Surah> allSurahs;
   final WhisperVoiceHifzController voiceController;
   final QuranMurattalAudioService murattalAudioService;
+  final Future<Surah?> Function()? onAdvanceToNextSurah;
+  final Future<void> Function(int surahId)? onSelectSurah;
 
   const RecitationCorrectionView({
     super.key,
     required this.verses,
     this.surah,
+    this.allSurahs = const [],
     required this.voiceController,
     required this.murattalAudioService,
+    this.onAdvanceToNextSurah,
+    this.onSelectSurah,
   });
 
   @override
@@ -1349,17 +1389,27 @@ class RecitationCorrectionView extends StatefulWidget {
 class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
   int _selectedVerseNumber = 1;
   bool _blindMode = false;
+  bool _autoAdvanceEnabled = true;
+  bool _autoPlayQariOnMistake = false;
+  bool _isContinuousSimulating = false;
   int _selectedWordIdx = 0;
   VerseMistakeAnalysisResult? _analysisResult;
+  String? _autoAdvanceBannerText;
+  bool _autoAdvanceBannerIsCorrect = true;
+  Timer? _autoAdvanceTimer;
+  Timer? _continuousSimTimer;
+  int? _pendingJumpVerseNumber;
+  String? _lastFinalizedVerseKey;
+  final List<_EvaluatedVerseHistoryItem> _sessionHistory = <_EvaluatedVerseHistoryItem>[];
   final TextEditingController _transcriptController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    widget.voiceController.onLiveTranscriptCallback = (String liveText) {
+    widget.voiceController.onLiveTranscriptDetailedCallback =
+        (String liveText, bool isFinal) {
       if (!mounted) return;
-      _transcriptController.text = liveText;
-      _runEvaluation(liveText);
+      _handleIncomingLiveSpeech(liveText, isFinal: isFinal);
     };
   }
 
@@ -1367,13 +1417,24 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
   void didUpdateWidget(covariant RecitationCorrectionView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.verses != widget.verses) {
+      final targetVerseNum = _pendingJumpVerseNumber ??
+          (widget.verses.isNotEmpty ? widget.verses.first.verseNumber : 1);
+      _pendingJumpVerseNumber = null;
       setState(() {
-        _selectedVerseNumber =
-            widget.verses.isNotEmpty ? widget.verses.first.verseNumber : 1;
+        _selectedVerseNumber = targetVerseNum;
         _analysisResult = null;
+        _autoAdvanceBannerText = null;
+        _lastFinalizedVerseKey = null;
         _selectedWordIdx = 0;
         _transcriptController.clear();
       });
+      final v = _activeVerse;
+      if (v != null) {
+        widget.voiceController.setActiveVerse(v);
+      }
+      if (_isContinuousSimulating) {
+        _scheduleNextSimulatedVerse();
+      }
     }
   }
 
@@ -1385,9 +1446,62 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
     );
   }
 
-  void _runEvaluation(String transcript) {
+  Surah? get _nextSurahPreview {
+    if (widget.allSurahs.isEmpty) return null;
+    final currId = widget.surah?.id ??
+        (widget.verses.isNotEmpty ? widget.verses.first.surahId : 0);
+    final idx = widget.allSurahs.indexWhere((s) => s.id == currId);
+    if (idx < 0) return null;
+    final nextIdx = (idx + 1) < widget.allSurahs.length ? (idx + 1) : 0;
+    return widget.allSurahs[nextIdx];
+  }
+
+  void _handleIncomingLiveSpeech(String liveText, {required bool isFinal}) {
     final verse = _activeVerse;
     if (verse == null) return;
+    final verseKey = '${verse.surahId}:${verse.verseNumber}';
+    // Jika ayat saat ini sudah difinalisasi dan sedang menunggu transisi otomatis, abaikan event ganda
+    if (_lastFinalizedVerseKey == verseKey) {
+      return;
+    }
+
+    _transcriptController.text = liveText;
+    final res = ArabicFuzzyMatcher.analyzeVerseWordMistakes(
+      targetVerse: verse,
+      spokenTranscript: liveText,
+    );
+    final firstIssueIdx = res.wordItems.indexWhere(
+      (w) => w.status != WordMistakeStatus.correct,
+    );
+    setState(() {
+      _analysisResult = res;
+      _selectedWordIdx = firstIssueIdx >= 0 ? firstIssueIdx : 0;
+    });
+
+    final cleanTokens = ArabicFuzzyMatcher.normalizeArabic(liveText)
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .toList();
+    final totalExpectedWords = res.wordItems.length;
+
+    // Deteksi apakah pembacaan ayat saat ini telah selesai (seluruh kata telah diucapkan atau kalimat selesai/final)
+    final hasReachedAllWords =
+        totalExpectedWords > 0 && cleanTokens.length >= totalExpectedWords;
+    if (cleanTokens.isNotEmpty && (isFinal || hasReachedAllWords)) {
+      _lastFinalizedVerseKey = verseKey;
+      _finalizeAndMaybeAutoAdvance(
+        verse,
+        res,
+        resetLiveMicBufferOnAdvance: !isFinal,
+      );
+    }
+  }
+
+  void _runEvaluation(String transcript, {bool triggerAutoAdvance = true}) {
+    final verse = _activeVerse;
+    if (verse == null) return;
+    _autoAdvanceTimer?.cancel();
+    _lastFinalizedVerseKey = null;
     final res = ArabicFuzzyMatcher.analyzeVerseWordMistakes(
       targetVerse: verse,
       spokenTranscript: transcript,
@@ -1399,13 +1513,159 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
       _analysisResult = res;
       _selectedWordIdx = firstIssueIdx >= 0 ? firstIssueIdx : 0;
     });
+    if (triggerAutoAdvance) {
+      _finalizeAndMaybeAutoAdvance(verse, res);
+    }
+  }
+
+  void _finalizeAndMaybeAutoAdvance(
+    Verse verse,
+    VerseMistakeAnalysisResult res, {
+    bool resetLiveMicBufferOnAdvance = false,
+  }) {
+    final isAllCorrect = res.wrongCount == 0 && res.nearMissCount == 0;
+    final surahName = verse.surahNameLatin ??
+        widget.surah?.nameLatin ??
+        'Surah ${verse.surahId}';
+
+    final historyItem = _EvaluatedVerseHistoryItem(
+      surahId: verse.surahId,
+      surahNameLatin: surahName,
+      verseNumber: verse.verseNumber,
+      textUthmani: verse.textUthmani,
+      result: res,
+      isAllCorrect: isAllCorrect,
+    );
+
+    setState(() {
+      final existingIdx = _sessionHistory.indexWhere(
+        (h) => h.surahId == verse.surahId && h.verseNumber == verse.verseNumber,
+      );
+      if (existingIdx >= 0) {
+        _sessionHistory[existingIdx] = historyItem;
+      } else {
+        _sessionHistory.insert(0, historyItem);
+      }
+    });
+
+    if (_autoPlayQariOnMistake && !isAllCorrect) {
+      widget.murattalAudioService.playVerse(
+        surahId: verse.surahId,
+        verseNumber: verse.verseNumber,
+        surahName: surahName,
+      );
+    }
+
+    if (!_autoAdvanceEnabled) return;
+
+    _autoAdvanceTimer?.cancel();
+    final isLastVerseInSurah = _selectedVerseNumber >= widget.verses.length;
+    final nextSurah = _nextSurahPreview;
+    final nextTargetLabel = !isLastVerseInSurah
+        ? 'QS. $surahName : Ayat ${_selectedVerseNumber + 1}'
+        : (nextSurah != null
+            ? 'Surah Selanjutnya — QS. ${nextSurah.nameLatin} (${nextSurah.nameArabic}) : Ayat 1'
+            : 'Surah Selanjutnya : Ayat 1');
+
+    final accPct = (res.accuracyScore * 100).round();
+    final issueCount = res.wrongCount + res.nearMissCount;
+
+    setState(() {
+      _autoAdvanceBannerIsCorrect = isAllCorrect;
+      _autoAdvanceBannerText = isAllCorrect
+          ? '✓ Bacaan Tepat ($accPct%)! Menyambung otomatis ke $nextTargetLabel...'
+          : '⚠️ Terdeteksi $issueCount kata perlu koreksi ($accPct%). Menyambung otomatis ke $nextTargetLabel...';
+    });
+
+    final delayMs = isAllCorrect
+        ? 1500
+        : (_autoPlayQariOnMistake ? 3400 : 2200);
+
+    _autoAdvanceTimer = Timer(Duration(milliseconds: delayMs), () {
+      _advanceToNextVerseOrSurah(
+        resetLiveMicBuffer: resetLiveMicBufferOnAdvance,
+      );
+    });
+  }
+
+  Future<void> _advanceToNextVerseOrSurah({bool resetLiveMicBuffer = false}) async {
+    if (!mounted) return;
+    _autoAdvanceTimer?.cancel();
+    _lastFinalizedVerseKey = null;
+
+    if (resetLiveMicBuffer) {
+      await widget.voiceController.resetRecognitionBufferForNextVerse();
+    }
+
+    if (_selectedVerseNumber < widget.verses.length) {
+      setState(() {
+        _selectedVerseNumber++;
+        _analysisResult = null;
+        _autoAdvanceBannerText = null;
+        _selectedWordIdx = 0;
+        _transcriptController.clear();
+      });
+      final nextV = _activeVerse;
+      if (nextV != null) {
+        await widget.voiceController.setActiveVerse(nextV);
+      }
+      if (_isContinuousSimulating) {
+        _scheduleNextSimulatedVerse();
+      }
+    } else {
+      // Sudah di ayat terakhir surah ini -> otomatis pindah ke Surah Selanjutnya Ayat 1!
+      if (widget.onAdvanceToNextSurah != null) {
+        await widget.onAdvanceToNextSurah!();
+      }
+    }
+  }
+
+  void _cancelPendingAutoAdvance() {
+    _autoAdvanceTimer?.cancel();
+    _continuousSimTimer?.cancel();
+    setState(() {
+      _autoAdvanceBannerText = null;
+      _isContinuousSimulating = false;
+    });
+  }
+
+  void _toggleContinuousSimulation() {
+    if (_isContinuousSimulating) {
+      _cancelPendingAutoAdvance();
+      return;
+    }
+    setState(() {
+      _isContinuousSimulating = true;
+      _autoAdvanceEnabled = true;
+    });
+    _runSingleSimulatedStep();
+  }
+
+  void _scheduleNextSimulatedVerse() {
+    _continuousSimTimer?.cancel();
+    if (!_isContinuousSimulating || !mounted) return;
+    _continuousSimTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted || !_isContinuousSimulating) return;
+      _runSingleSimulatedStep();
+    });
+  }
+
+  void _runSingleSimulatedStep() {
+    final verse = _activeVerse;
+    if (verse == null) return;
+    // Setiap ayat ke-3 disimulasikan ada 1 kata kurang tepat agar terlihat proses koreksi benar & salah secara nyata
+    if (verse.verseNumber % 3 == 0) {
+      _simulateMistake();
+    } else {
+      _simulatePerfect();
+    }
   }
 
   void _simulatePerfect() {
     final verse = _activeVerse;
     if (verse == null) return;
     _transcriptController.text = verse.textUthmani;
-    _runEvaluation(verse.textUthmani);
+    _runEvaluation(verse.textUthmani, triggerAutoAdvance: true);
   }
 
   void _simulateMistake() {
@@ -1428,13 +1688,15 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
     }
     final text = mutated.join(' ');
     _transcriptController.text = text;
-    _runEvaluation(text);
+    _runEvaluation(text, triggerAutoAdvance: true);
   }
 
   @override
   void dispose() {
-    if (widget.voiceController.onLiveTranscriptCallback != null) {
-      widget.voiceController.onLiveTranscriptCallback = null;
+    _autoAdvanceTimer?.cancel();
+    _continuousSimTimer?.cancel();
+    if (widget.voiceController.onLiveTranscriptDetailedCallback != null) {
+      widget.voiceController.onLiveTranscriptDetailedCallback = null;
     }
     _transcriptController.dispose();
     super.dispose();
@@ -1548,10 +1810,15 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                       children: [
                         OutlinedButton(
                           onPressed: _selectedVerseNumber > 1
-                              ? () => setState(() {
+                              ? () {
+                                  _cancelPendingAutoAdvance();
+                                  setState(() {
                                     _selectedVerseNumber--;
                                     _analysisResult = null;
-                                  })
+                                    _lastFinalizedVerseKey = null;
+                                    _transcriptController.clear();
+                                  });
+                                }
                               : null,
                           child: const Text('◄ Ayat Sebelumnya'),
                         ),
@@ -1578,9 +1845,12 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                                   .toList(),
                               onChanged: (val) {
                                 if (val != null) {
+                                  _cancelPendingAutoAdvance();
                                   setState(() {
                                     _selectedVerseNumber = val;
                                     _analysisResult = null;
+                                    _lastFinalizedVerseKey = null;
+                                    _transcriptController.clear();
                                   });
                                 }
                               },
@@ -1588,19 +1858,87 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                           ),
                         ),
                         OutlinedButton(
-                          onPressed: _selectedVerseNumber < widget.verses.length
-                              ? () => setState(() {
-                                    _selectedVerseNumber++;
-                                    _analysisResult = null;
-                                  })
-                              : null,
-                          child: const Text('Ayat Selanjutnya ►'),
+                          onPressed: () {
+                            _cancelPendingAutoAdvance();
+                            _lastFinalizedVerseKey = null;
+                            if (_selectedVerseNumber < widget.verses.length) {
+                              setState(() {
+                                _selectedVerseNumber++;
+                                _analysisResult = null;
+                                _transcriptController.clear();
+                              });
+                            } else if (widget.onAdvanceToNextSurah != null) {
+                              widget.onAdvanceToNextSurah!();
+                            }
+                          },
+                          child: Text(
+                            _selectedVerseNumber < widget.verses.length
+                                ? 'Ayat Selanjutnya ►'
+                                : 'Surah Selanjutnya ►',
+                          ),
                         ),
                       ],
                     ),
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _autoAdvanceEnabled
+                                ? primaryColor.withOpacity(0.14)
+                                : null,
+                            side: BorderSide(
+                              color: _autoAdvanceEnabled ? primaryColor : borderCard,
+                              width: _autoAdvanceEnabled ? 1.5 : 1.0,
+                            ),
+                          ),
+                          onPressed: () => setState(
+                            () => _autoAdvanceEnabled = !_autoAdvanceEnabled,
+                          ),
+                          icon: Icon(
+                            _autoAdvanceEnabled
+                                ? Icons.autorenew_rounded
+                                : Icons.pause_circle_outline_rounded,
+                            size: 16,
+                            color: _autoAdvanceEnabled ? primaryColor : textSecondary,
+                          ),
+                          label: Text(
+                            _autoAdvanceEnabled
+                                ? 'Sambung Otomatis (Ayat & Surah): ON'
+                                : 'Sambung Otomatis: OFF',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: _autoAdvanceEnabled ? primaryColor : null,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _autoPlayQariOnMistake
+                                ? goldColor.withOpacity(0.16)
+                                : null,
+                            side: BorderSide(
+                              color: _autoPlayQariOnMistake ? goldColor : borderCard,
+                            ),
+                          ),
+                          onPressed: () => setState(
+                            () => _autoPlayQariOnMistake = !_autoPlayQariOnMistake,
+                          ),
+                          icon: Icon(
+                            Icons.record_voice_over_outlined,
+                            size: 15,
+                            color: _autoPlayQariOnMistake ? goldColor : textSecondary,
+                          ),
+                          label: Text(
+                            _autoPlayQariOnMistake
+                                ? 'Putar Qari Saat Salah: ON'
+                                : 'Putar Qari Saat Salah: OFF',
+                            style: TextStyle(
+                              color: _autoPlayQariOnMistake ? goldColor : null,
+                            ),
+                          ),
+                        ),
                         OutlinedButton(
                           onPressed: () =>
                               setState(() => _blindMode = !_blindMode),
@@ -1629,8 +1967,13 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                   runSpacing: 8,
                   children: [
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: primaryColor),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: widget.voiceController.state.isListening
+                            ? const Color(0xFFDC2626)
+                            : primaryColor,
+                      ),
                       onPressed: () async {
+                        _cancelPendingAutoAdvance();
                         await widget.voiceController.setActiveVerse(verse);
                         if (widget.voiceController.state.isListening) {
                           await widget.voiceController.stopListening();
@@ -1644,11 +1987,49 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
                         }
                         setState(() {});
                       },
-                      icon: const Icon(Icons.mic_rounded, size: 18),
+                      icon: Icon(
+                        widget.voiceController.state.isListening
+                            ? Icons.stop_rounded
+                            : Icons.mic_rounded,
+                        size: 18,
+                      ),
                       label: Text(
                         widget.voiceController.state.isListening
                             ? 'Hentikan & Evaluasi Suara'
-                            : 'Mulai Rekam & Koreksi Suara',
+                            : 'Mulai Rekam & Koreksi Bersambung',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _isContinuousSimulating
+                            ? const Color(0xFFDC2626).withOpacity(0.12)
+                            : null,
+                        side: BorderSide(
+                          color: _isContinuousSimulating
+                              ? const Color(0xFFDC2626)
+                              : primaryColor,
+                        ),
+                      ),
+                      onPressed: _toggleContinuousSimulation,
+                      icon: Icon(
+                        _isContinuousSimulating
+                            ? Icons.stop_circle_outlined
+                            : Icons.play_circle_outline_rounded,
+                        size: 17,
+                        color: _isContinuousSimulating
+                            ? const Color(0xFFDC2626)
+                            : primaryColor,
+                      ),
+                      label: Text(
+                        _isContinuousSimulating
+                            ? 'Hentikan Tasmi\' Otomatis'
+                            : 'Simulasi Tasmi\' Bersambung (Lintas Ayat & Surah)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: _isContinuousSimulating
+                              ? const Color(0xFFDC2626)
+                              : primaryColor,
+                        ),
                       ),
                     ),
                     OutlinedButton(
@@ -1726,6 +2107,60 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
           ),
 
           const SizedBox(height: 16),
+
+          // Banner Transisi Otomatis ke Ayat / Surah Selanjutnya (Ala Tarteel)
+          if (_autoAdvanceBannerText != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: _autoAdvanceBannerIsCorrect
+                    ? (isDark ? const Color(0xFF0E291E) : const Color(0xFFECFDF5))
+                    : (isDark ? const Color(0xFF2E2410) : const Color(0xFFFFFBEB)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _autoAdvanceBannerIsCorrect
+                      ? const Color(0xFF34D399)
+                      : const Color(0xFFF59E0B),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _autoAdvanceBannerIsCorrect
+                        ? Icons.check_circle_rounded
+                        : Icons.info_outline_rounded,
+                    color: _autoAdvanceBannerIsCorrect
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFD97706),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _autoAdvanceBannerText!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _autoAdvanceBannerIsCorrect
+                            ? (isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46))
+                            : (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _cancelPendingAutoAdvance,
+                    child: const Text(
+                      'Tahan di Ayat Ini',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
 
           // Lembaran Mushaf Evaluasi Per Kata
           Container(
@@ -1881,8 +2316,159 @@ class _RecitationCorrectionViewState extends State<RecitationCorrectionView> {
 
           const SizedBox(height: 16),
 
+          // Riwayat Hasil Bacaan Bersambung (Sesi Ini) — Memudahkan pantau ayat Benar/Salah lintas ayat & surah
+          if (_sessionHistory.isNotEmpty) ...[
+            _buildSessionHistoryCard(context, isDark),
+            const SizedBox(height: 16),
+          ],
+
           // Kartu Inspector Koreksi Kata Terpilih
           _buildWordInspectorCard(context, verse, words, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionHistoryCard(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+    final correctVerses = _sessionHistory.where((h) => h.isAllCorrect).length;
+    final mistakeVerses = _sessionHistory.length - correctVerses;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history_edu_rounded, size: 18, color: primaryColor),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Riwayat Tasmi\' Bersambung (Sesi Ini)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _buildMetricPill(
+                    label: 'Total: ${_sessionHistory.length} Ayat',
+                    bgColor: isDark ? const Color(0xFF242B28) : const Color(0xFFF1EDE4),
+                    textColor: isDark ? Colors.white : const Color(0xFF1C221F),
+                    borderColor: borderCard,
+                  ),
+                  _buildMetricPill(
+                    label: '✓ Lancar: $correctVerses Ayat',
+                    bgColor: const Color(0xFFECFDF5),
+                    textColor: const Color(0xFF065F46),
+                    borderColor: const Color(0xFF6EE7B7),
+                  ),
+                  _buildMetricPill(
+                    label: '⚠️ Perlu Koreksi: $mistakeVerses Ayat',
+                    bgColor: const Color(0xFFFEF2F2),
+                    textColor: const Color(0xFF991B1B),
+                    borderColor: const Color(0xFFF87171),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _sessionHistory.clear()),
+                    child: const Text('Reset Riwayat', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Klik salah satu ayat di bawah untuk meninjau kembali detail kata yang benar/salah:',
+            style: TextStyle(fontSize: 12, color: textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _sessionHistory.take(18).map((item) {
+              final acc = (item.result.accuracyScore * 100).round();
+              final issues = item.result.wrongCount + item.result.nearMissCount;
+              return InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () async {
+                  _cancelPendingAutoAdvance();
+                  final currentSurahId = widget.surah?.id ??
+                      (widget.verses.isNotEmpty ? widget.verses.first.surahId : 0);
+                  if (item.surahId != currentSurahId && widget.onSelectSurah != null) {
+                    _pendingJumpVerseNumber = item.verseNumber;
+                    await widget.onSelectSurah!(item.surahId);
+                  }
+                  if (!mounted) return;
+                  setState(() {
+                    _selectedVerseNumber = item.verseNumber;
+                    _analysisResult = item.result;
+                    final firstIssue = item.result.wordItems.indexWhere(
+                      (w) => w.status != WordMistakeStatus.correct,
+                    );
+                    _selectedWordIdx = firstIssue >= 0 ? firstIssue : 0;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: item.isAllCorrect
+                        ? (isDark ? const Color(0xFF0E291E) : const Color(0xFFECFDF5))
+                        : (isDark ? const Color(0xFF2D1618) : const Color(0xFFFEF2F2)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: item.isAllCorrect
+                          ? const Color(0xFF34D399)
+                          : const Color(0xFFF87171),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        item.isAllCorrect
+                            ? Icons.check_circle_rounded
+                            : Icons.warning_amber_rounded,
+                        size: 14,
+                        color: item.isAllCorrect
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFDC2626),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'QS. ${item.surahNameLatin}:${item.verseNumber} • ${item.isAllCorrect ? "100% Tepat" : "$acc% ($issues koreksi)"}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: item.isAllCorrect
+                              ? (isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46))
+                              : (isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

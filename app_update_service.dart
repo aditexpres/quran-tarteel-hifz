@@ -52,7 +52,7 @@ class AppUpdateInfo {
 }
 
 class AppUpdateService {
-  static const String currentVersion = '1.2.4';
+  static const String currentVersion = '1.2.5';
   static const String _githubRepoOwner = 'aditexpres';
   static const String _githubRepoName = 'quran-tarteel-hifz';
   static const MethodChannel _installerChannel = MethodChannel('com.qurantarteelhifz/installer');

@@ -348,6 +348,12 @@
               <button id="btn-corr-next" class="btn btn-secondary btn-sm" title="Ayat Selanjutnya">Ayat Selanjutnya ►</button>
             </div>
             <div class="correction-mode-toggles">
+              <button id="btn-corr-auto-advance" class="btn btn-secondary btn-sm active" aria-pressed="true" title="Otomatis pindah ke ayat dan surah berikutnya setelah bacaan terdeteksi benar/salah">
+                <span>Sambung Otomatis (Ayat &amp; Surah): ON</span>
+              </button>
+              <button id="btn-corr-auto-qari" class="btn btn-secondary btn-sm" aria-pressed="false" title="Putar contoh Qari otomatis jika terdeteksi ada kata yang salah ucap">
+                <span>Putar Qari Saat Salah: OFF</span>
+              </button>
               <button id="btn-corr-blind" class="btn btn-secondary btn-sm" aria-pressed="false">
                 <span>Sembunyikan Lafal (Uji Hafalan)</span>
               </button>
@@ -363,8 +369,9 @@
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
               </svg>
-              <span id="corr-mic-label">Mulai Rekam & Koreksi Suara</span>
+              <span id="corr-mic-label">Mulai Rekam &amp; Koreksi Bersambung</span>
             </button>
+            <button id="btn-corr-sim-continuous" class="btn btn-secondary btn-sm">▶ Simulasi Tasmi' Bersambung (Lintas Ayat &amp; Surah)</button>
             <button id="btn-corr-sim-perfect" class="btn btn-secondary btn-sm">Simulasi Bacaan Tepat (100%)</button>
             <button id="btn-corr-sim-mistake" class="btn btn-secondary btn-sm">Simulasi Ada Kata Salah / Terlewat</button>
           </div>
@@ -383,17 +390,40 @@
           </div>
         </div>
 
+        <!-- Banner Transisi Otomatis ke Ayat / Surah Berikutnya (Ala Tarteel) -->
+        <div id="corr-auto-advance-banner" class="trap-alert-box hidden" role="status" style="margin-bottom: 14px;">
+          <div class="alert-content" style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:12px; flex-wrap:wrap;">
+            <strong id="corr-auto-advance-text">✓ Bacaan Tepat! Menyambung otomatis ke ayat berikutnya...</strong>
+            <button type="button" id="btn-corr-hold-verse" class="btn btn-secondary btn-xs">Tahan di Ayat Ini</button>
+          </div>
+        </div>
+
         <!-- Lembaran Mushaf Evaluasi Per Kata -->
         <article class="mushaf-page-card correction-mushaf-card">
           <header class="mushaf-page-header">
             <span id="corr-surah-header">QS. An-Naba' : Ayat 1</span>
-            <span>Klik pada kata berwarna merah/kuning untuk melihat detail koreksi & mendengar Qari</span>
+            <span>Klik pada kata berwarna merah/kuning untuk melihat detail koreksi &amp; mendengar Qari</span>
           </header>
           <div class="correction-words-flow" id="corr-words-flow" dir="rtl">
             <!-- Kata per kata dirender via JS -->
           </div>
           <p class="correction-verse-translation" id="corr-verse-translation"></p>
         </article>
+
+        <!-- Riwayat Hasil Bacaan Bersambung (Sesi Ini) -->
+        <div id="corr-session-history-card" class="correction-control-card hidden" style="margin-top: 16px;">
+          <div class="correction-top-bar" style="margin-bottom: 8px;">
+            <strong>Riwayat Tasmi' Bersambung (Sesi Ini)</strong>
+            <div class="correction-metrics-row" style="margin-top: 0;">
+              <span class="corr-metric-pill accuracy" id="corr-hist-total">Total: 0 Ayat</span>
+              <span class="corr-metric-pill correct" id="corr-hist-correct">✓ Lancar: 0 Ayat</span>
+              <span class="corr-metric-pill wrong" id="corr-hist-mistake">⚠️ Perlu Koreksi: 0 Ayat</span>
+              <button type="button" id="btn-corr-clear-history" class="btn btn-ghost btn-xs">Reset Riwayat</button>
+            </div>
+          </div>
+          <p style="font-size: 12px; opacity: 0.78; margin: 0 0 10px 0;">Klik salah satu ayat di bawah untuk meninjau kembali detail kata yang benar/salah:</p>
+          <div id="corr-history-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
 
         <!-- Kartu Detail Koreksi Kata Terpilih -->
         <div class="mutasyabihat-inspector" id="corr-word-inspector">

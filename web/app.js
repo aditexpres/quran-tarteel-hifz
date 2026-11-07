@@ -28,6 +28,7 @@
     currentRepeat: 0,
     activeScope: 'all',
     searchQuery: '',
+    keepMicContinuous: false,
     drill: {
       questions: [],
       currentIndex: 0,
@@ -37,10 +38,19 @@
     correction: {
       verseNumber: 1,
       blindMode: false,
+      autoAdvance: true,
+      autoPlayQariOnMistake: false,
+      isContinuousSimulating: false,
       wordResults: [],
-      selectedWordIdx: -1
+      selectedWordIdx: -1,
+      sessionHistory: [],
+      lastFinalizedKey: null,
+      simCounter: 0
     }
   };
+
+  let corrAutoAdvanceTimer = null;
+  let corrContinuousSimTimer = null;
 
   // Cache DOM Elements
   const DOM = {
@@ -76,10 +86,13 @@
     corrVerseSelect: document.getElementById('corr-verse-select'),
     btnCorrPrev: document.getElementById('btn-corr-prev'),
     btnCorrNext: document.getElementById('btn-corr-next'),
+    btnCorrAutoAdvance: document.getElementById('btn-corr-auto-advance'),
+    btnCorrAutoQari: document.getElementById('btn-corr-auto-qari'),
     btnCorrBlind: document.getElementById('btn-corr-blind'),
     btnCorrListenQari: document.getElementById('btn-corr-listen-qari'),
     btnCorrMic: document.getElementById('btn-corr-mic'),
     corrMicLabel: document.getElementById('corr-mic-label'),
+    btnCorrSimContinuous: document.getElementById('btn-corr-sim-continuous'),
     btnCorrSimPerfect: document.getElementById('btn-corr-sim-perfect'),
     btnCorrSimMistake: document.getElementById('btn-corr-sim-mistake'),
     corrTranscriptInput: document.getElementById('corr-transcript-input'),
@@ -88,9 +101,18 @@
     corrMetricCorrect: document.getElementById('corr-metric-correct'),
     corrMetricNear: document.getElementById('corr-metric-near'),
     corrMetricWrong: document.getElementById('corr-metric-wrong'),
+    corrAutoAdvanceBanner: document.getElementById('corr-auto-advance-banner'),
+    corrAutoAdvanceText: document.getElementById('corr-auto-advance-text'),
+    btnCorrHoldVerse: document.getElementById('btn-corr-hold-verse'),
     corrSurahHeader: document.getElementById('corr-surah-header'),
     corrWordsFlow: document.getElementById('corr-words-flow'),
     corrVerseTranslation: document.getElementById('corr-verse-translation'),
+    corrSessionHistoryCard: document.getElementById('corr-session-history-card'),
+    corrHistTotal: document.getElementById('corr-hist-total'),
+    corrHistCorrect: document.getElementById('corr-hist-correct'),
+    corrHistMistake: document.getElementById('corr-hist-mistake'),
+    btnCorrClearHistory: document.getElementById('btn-corr-clear-history'),
+    corrHistoryList: document.getElementById('corr-history-list'),
     corrInspectorBadge: document.getElementById('corr-inspector-badge'),
     corrInspectorTitle: document.getElementById('corr-inspector-title'),
     corrInspectorBody: document.getElementById('corr-inspector-body'),
@@ -679,34 +701,60 @@
     state.recognition.onstart = () => {
       state.isListening = true;
       DOM.btnToggleMic.classList.add('listening');
+      if (DOM.btnCorrMic) DOM.btnCorrMic.classList.add('listening');
+      if (DOM.corrMicLabel) {
+        DOM.corrMicLabel.textContent = 'Sedang Menyimak Bersambung... (Klik untuk Berhenti)';
+      }
       DOM.voiceIndicator.textContent = 'Mendengarkan bacaan Arab Anda secara real-time...';
     };
 
     state.recognition.onresult = (event) => {
       let interim = '';
+      const lastRes = event.results[event.results.length - 1];
+      const isFinal = Boolean(lastRes && lastRes.isFinal);
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        interim += event.results[i][0].transcript;
+        interim += event.results[i][0].transcript + ' ';
       }
+      interim = interim.trim();
       if (interim) {
         DOM.transcriptDisplay.textContent = `Suara: "${interim}"`;
         evaluateVoiceSpeech(interim);
         if (DOM.corrTranscriptInput) {
           DOM.corrTranscriptInput.value = interim;
-          evaluateCorrectionWords(interim);
+          const corrSec = document.getElementById('section-correction');
+          const isCorrTabActive = !corrSec || corrSec.classList.contains('active');
+          evaluateCorrectionWords(interim, {
+            isFinal,
+            triggerAutoAdvance: isCorrTabActive,
+            fromLiveMic: true
+          });
         }
       }
     };
 
     state.recognition.onerror = (event) => {
       console.warn('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        state.keepMicContinuous = false;
         DOM.voiceIndicator.textContent = 'Izin mikrofon belum diberikan.';
       }
     };
 
     state.recognition.onend = () => {
+      if (state.keepMicContinuous) {
+        try {
+          state.recognition.start();
+          return;
+        } catch (_) {
+          // Abaikan jika browser sedang me-reset instance
+        }
+      }
       state.isListening = false;
       DOM.btnToggleMic.classList.remove('listening');
+      if (DOM.btnCorrMic) DOM.btnCorrMic.classList.remove('listening');
+      if (DOM.corrMicLabel) {
+        DOM.corrMicLabel.textContent = 'Mulai Rekam & Koreksi Bersambung';
+      }
       DOM.voiceIndicator.textContent = 'Mikrofon nonaktif. Klik untuk mulai menyimak.';
     };
   }
@@ -719,9 +767,13 @@
     }
 
     if (state.isListening) {
+      state.keepMicContinuous = false;
       state.recognition.stop();
     } else {
-      state.recognition.start();
+      state.keepMicContinuous = true;
+      try {
+        state.recognition.start();
+      } catch (_) {}
     }
   }
 
@@ -911,7 +963,7 @@
   }
 
   // =========================================================================
-  // 8B. MODE LATIHAN & KOREKSI BACAAN PER KATA (ALA TARTEEL)
+  // 8B. MODE LATIHAN & KOREKSI BACAAN PER KATA + BERSAMBUNG OTOMATIS (ALA TARTEEL)
   // =========================================================================
   function getCorrectionActiveVerse() {
     const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
@@ -922,6 +974,183 @@
       found = verses[0];
     }
     return found;
+  }
+
+  function getNextSurahObj() {
+    const surahs = state.data.surahs || [];
+    if (!surahs.length) return null;
+    const idx = surahs.findIndex(s => s.id === state.activeSurahId);
+    const nextIdx = idx >= 0 ? (idx + 1) % surahs.length : 0;
+    return surahs[nextIdx];
+  }
+
+  function cancelCorrAutoAdvance(hideBanner = true) {
+    if (corrAutoAdvanceTimer) {
+      clearTimeout(corrAutoAdvanceTimer);
+      corrAutoAdvanceTimer = null;
+    }
+    if (hideBanner && DOM.corrAutoAdvanceBanner) {
+      DOM.corrAutoAdvanceBanner.classList.add('hidden');
+    }
+  }
+
+  function stopContinuousSimulation() {
+    state.correction.isContinuousSimulating = false;
+    if (corrContinuousSimTimer) {
+      clearTimeout(corrContinuousSimTimer);
+      corrContinuousSimTimer = null;
+    }
+    if (DOM.btnCorrSimContinuous) {
+      DOM.btnCorrSimContinuous.classList.remove('active');
+      DOM.btnCorrSimContinuous.textContent = "▶ Simulasi Tasmi' Bersambung (Lintas Ayat & Surah)";
+    }
+  }
+
+  function advanceCorrectionToNextVerseOrSurah(resetLiveMicBuffer = false) {
+    cancelCorrAutoAdvance(true);
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    state.correction.lastFinalizedKey = null;
+    state.correction.wordResults = [];
+    state.correction.selectedWordIdx = -1;
+
+    if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = '';
+    if (DOM.corrMetricAcc) DOM.corrMetricAcc.textContent = 'Akurasi: —';
+    if (DOM.corrMetricCorrect) DOM.corrMetricCorrect.textContent = 'Tepat: 0 kata';
+    if (DOM.corrMetricNear) DOM.corrMetricNear.textContent = 'Perlu Perbaikan: 0 kata';
+    if (DOM.corrMetricWrong) DOM.corrMetricWrong.textContent = 'Salah / Terlewat: 0 kata';
+
+    // Jika perpindahan dipicu oleh terpenuhinya jumlah kata sebelum jeda nafas WebSpeech selesai,
+    // segarkan buffer pengenalan suara agar kata ayat lama tidak terbawa ke ayat berikutnya.
+    if (resetLiveMicBuffer && state.isListening && state.recognition) {
+      try {
+        state.recognition.abort();
+      } catch (_) {}
+    }
+
+    if (state.correction.verseNumber < verses.length) {
+      state.correction.verseNumber++;
+      renderCorrectionView();
+    } else {
+      const nextSurah = getNextSurahObj();
+      if (nextSurah) {
+        state.activeSurahId = nextSurah.id;
+        if (DOM.surahSelect) DOM.surahSelect.value = String(nextSurah.id);
+        const firstVerse = state.data.verses.find(v => v.surah_id === state.activeSurahId);
+        if (firstVerse) {
+          state.activePageNumber = firstVerse.page_number;
+        }
+        state.correction.verseNumber = 1;
+        renderMushafView();
+        renderMarkedMushafView();
+        renderCorrectionView();
+        if (state.activeScope === 'surah') {
+          renderRadarMutasyabihat();
+        }
+      }
+    }
+
+    if (state.correction.isContinuousSimulating) {
+      corrContinuousSimTimer = setTimeout(() => {
+        runSingleContinuousSimulationStep();
+      }, 650);
+    }
+  }
+
+  function recordCorrectionSessionHistory(verse, summary) {
+    const surah = state.data.surahs.find(s => s.id === verse.surah_id);
+    const key = `${verse.surah_id}:${verse.verse_number}`;
+    const item = {
+      key,
+      surahId: verse.surah_id,
+      surahNameLatin: verse.surah_name_latin || (surah ? surah.name_latin : `Surah ${verse.surah_id}`),
+      verseNumber: verse.verse_number,
+      accPct: summary.accPct,
+      isAllCorrect: summary.isAllCorrect,
+      correctCount: summary.correctCount,
+      nearCount: summary.nearCount,
+      wrongCount: summary.wrongCount,
+      spokenText: summary.spokenText
+    };
+
+    const existingIdx = state.correction.sessionHistory.findIndex(h => h.key === key);
+    if (existingIdx >= 0) {
+      state.correction.sessionHistory[existingIdx] = item;
+    } else {
+      state.correction.sessionHistory.push(item);
+    }
+    renderCorrectionSessionHistory();
+  }
+
+  function renderCorrectionSessionHistory() {
+    if (!DOM.corrSessionHistoryCard || !DOM.corrHistoryList) return;
+    const hist = state.correction.sessionHistory;
+    if (!hist.length) {
+      DOM.corrSessionHistoryCard.classList.add('hidden');
+      DOM.corrHistoryList.innerHTML = '';
+      return;
+    }
+
+    DOM.corrSessionHistoryCard.classList.remove('hidden');
+    const okCount = hist.filter(h => h.isAllCorrect).length;
+    const errCount = hist.length - okCount;
+
+    if (DOM.corrHistTotal) DOM.corrHistTotal.textContent = `Total: ${hist.length} Ayat`;
+    if (DOM.corrHistCorrect) DOM.corrHistCorrect.textContent = `✓ Lancar: ${okCount} Ayat`;
+    if (DOM.corrHistMistake) DOM.corrHistMistake.textContent = `⚠️ Perlu Koreksi: ${errCount} Ayat`;
+
+    DOM.corrHistoryList.innerHTML = '';
+    hist.forEach(item => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `corr-metric-pill ${item.isAllCorrect ? 'correct' : 'wrong'}`;
+      btn.style.cursor = 'pointer';
+      btn.style.border = '1px solid currentColor';
+      btn.title = 'Klik untuk meninjau detail koreksi ayat ini';
+      btn.textContent = `${item.isAllCorrect ? '✓' : '⚠️'} QS. ${item.surahNameLatin}:${item.verseNumber} (${item.accPct}%)`;
+
+      btn.addEventListener('click', () => {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
+        if (state.activeSurahId !== item.surahId) {
+          state.activeSurahId = item.surahId;
+          if (DOM.surahSelect) DOM.surahSelect.value = String(item.surahId);
+          const firstVerse = state.data.verses.find(v => v.surah_id === state.activeSurahId);
+          if (firstVerse) state.activePageNumber = firstVerse.page_number;
+          renderMushafView();
+          renderMarkedMushafView();
+        }
+        state.correction.verseNumber = item.verseNumber;
+        if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = item.spokenText;
+        renderCorrectionView();
+        evaluateCorrectionWords(item.spokenText, { isFinal: true, triggerAutoAdvance: false });
+      });
+
+      DOM.corrHistoryList.appendChild(btn);
+    });
+  }
+
+  function runSingleContinuousSimulationStep() {
+    if (!state.correction.isContinuousSimulating) return;
+    const v = getCorrectionActiveVerse();
+    if (!v) {
+      stopContinuousSimulation();
+      return;
+    }
+
+    state.correction.simCounter++;
+    let spoken = v.text_uthmani;
+    // Setiap ayat ke-3 pada simulasi dibuat memiliki 1 kesalahan ringan agar alur Benar & Salah terlihat nyata
+    if (state.correction.simCounter % 3 === 0) {
+      const tokens = v.text_uthmani.split(/\s+/).filter(Boolean);
+      const mutated = tokens.map((tok, i) => {
+        if (i === tokens.length - 1) return 'ٱلصَّاخَّةُ';
+        return tok;
+      });
+      spoken = mutated.join(' ');
+    }
+
+    if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = spoken;
+    evaluateCorrectionWords(spoken, { isFinal: true, triggerAutoAdvance: true });
   }
 
   function renderCorrectionView() {
@@ -943,6 +1172,14 @@
         state.correction.verseNumber = verses[0].verse_number;
       }
       DOM.corrVerseSelect.value = state.correction.verseNumber;
+    }
+
+    if (DOM.btnCorrNext) {
+      const isLastVerse = state.correction.verseNumber >= verses.length;
+      const nextSurah = getNextSurahObj();
+      DOM.btnCorrNext.textContent = isLastVerse && nextSurah
+        ? `Surah Selanjutnya (${nextSurah.name_latin}) ►`
+        : 'Ayat Selanjutnya ►';
     }
 
     const activeVerse = getCorrectionActiveVerse();
@@ -1009,7 +1246,7 @@
     });
   }
 
-  function evaluateCorrectionWords(spokenText) {
+  function evaluateCorrectionWords(spokenText, opts = { isFinal: true, triggerAutoAdvance: true, fromLiveMic: false }) {
     const verse = getCorrectionActiveVerse();
     if (!verse) return;
 
@@ -1100,6 +1337,7 @@
     state.correction.wordResults = results;
     const total = Math.max(1, words.length);
     const accPct = Math.round(((correctCount + nearCount * 0.5) / total) * 100);
+    const isAllCorrect = wrongCount === 0 && nearCount === 0;
 
     if (DOM.corrMetricAcc) DOM.corrMetricAcc.textContent = `Akurasi: ${accPct}%`;
     if (DOM.corrMetricCorrect) DOM.corrMetricCorrect.textContent = `Tepat: ${correctCount} kata`;
@@ -1114,6 +1352,63 @@
     const targetIdx = state.correction.selectedWordIdx;
     if (words[targetIdx]) {
       showCorrectionWordInspector(verse, words[targetIdx], results[targetIdx], targetIdx);
+    }
+
+    // Deteksi apakah pembacaan 1 ayat sudah selesai (isFinal jeda suara ATAU jumlah kata telah memenuhi ayat)
+    const reachedWordTarget = cleanSpokenTokens.length >= words.length && cleanSpokenTokens.length > 0;
+    const isVerseCompleted = cleanSpokenTokens.length > 0 && (Boolean(opts.isFinal) || reachedWordTarget);
+
+    if (opts.triggerAutoAdvance && isVerseCompleted) {
+      const verseKey = `${verse.surah_id}:${verse.verse_number}`;
+      // Hindari pemicuan ganda pada ayat yang sama saat interim -> final menyusul
+      if (opts.fromLiveMic && state.correction.lastFinalizedKey === verseKey) {
+        return;
+      }
+      state.correction.lastFinalizedKey = verseKey;
+
+      recordCorrectionSessionHistory(verse, {
+        accPct,
+        isAllCorrect,
+        correctCount,
+        nearCount,
+        wrongCount,
+        spokenText: spokenText || ''
+      });
+
+      if (!isAllCorrect && state.correction.autoPlayQariOnMistake) {
+        playMurattalAudio(verse.surah_id, verse.verse_number);
+      }
+
+      if (state.correction.autoAdvance) {
+        cancelCorrAutoAdvance(false);
+        const versesInSurah = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+        const isLastInSurah = verse.verse_number >= versesInSurah.length;
+        const nextSurah = getNextSurahObj();
+        const curSurah = state.data.surahs.find(s => s.id === state.activeSurahId);
+        const targetLabel = isLastInSurah && nextSurah
+          ? `QS. ${nextSurah.name_latin} : Ayat 1 (Pindah Surah Otomatis)`
+          : `QS. ${curSurah ? curSurah.name_latin : ''} : Ayat ${verse.verse_number + 1}`;
+
+        const statusPrefix = isAllCorrect
+          ? `✓ Bacaan Benar (${accPct}%)`
+          : `⚠️ Terdeteksi Koreksi (${wrongCount + nearCount} kata perlu perbaikan, Akurasi ${accPct}%)`;
+
+        if (DOM.corrAutoAdvanceText) {
+          DOM.corrAutoAdvanceText.textContent = `${statusPrefix} — Menyambung otomatis ke ${targetLabel}...`;
+        }
+        if (DOM.corrAutoAdvanceBanner) {
+          DOM.corrAutoAdvanceBanner.classList.remove('hidden');
+        }
+
+        const delayMs = isAllCorrect
+          ? 1400
+          : (state.correction.autoPlayQariOnMistake ? 3400 : 2200);
+        const shouldResetMicBuf = Boolean(opts.fromLiveMic && !opts.isFinal);
+
+        corrAutoAdvanceTimer = setTimeout(() => {
+          advanceCorrectionToNextVerseOrSurah(shouldResetMicBuf);
+        }, delayMs);
+      }
     }
   }
 
@@ -1184,6 +1479,8 @@
 
     // Surah Dropdown Change
     DOM.surahSelect.addEventListener('change', (e) => {
+      stopContinuousSimulation();
+      cancelCorrAutoAdvance(true);
       state.activeSurahId = parseInt(e.target.value, 10);
       const firstVerse = state.data.verses.find(v => v.surah_id === state.activeSurahId);
       if (firstVerse) {
@@ -1193,6 +1490,7 @@
       renderMarkedMushafView();
       state.correction.verseNumber = 1;
       state.correction.wordResults = [];
+      state.correction.lastFinalizedKey = null;
       renderCorrectionView();
       if (state.activeScope === 'surah') {
         renderRadarMutasyabihat();
@@ -1202,31 +1500,68 @@
     // Correction Mode Listeners
     if (DOM.corrVerseSelect) {
       DOM.corrVerseSelect.addEventListener('change', (e) => {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
         state.correction.verseNumber = parseInt(e.target.value, 10);
         state.correction.wordResults = [];
         state.correction.selectedWordIdx = -1;
+        state.correction.lastFinalizedKey = null;
         renderCorrectionView();
       });
     }
     if (DOM.btnCorrPrev) {
       DOM.btnCorrPrev.addEventListener('click', () => {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
         if (state.correction.verseNumber > 1) {
           state.correction.verseNumber--;
           state.correction.wordResults = [];
           state.correction.selectedWordIdx = -1;
+          state.correction.lastFinalizedKey = null;
           renderCorrectionView();
         }
       });
     }
     if (DOM.btnCorrNext) {
       DOM.btnCorrNext.addEventListener('click', () => {
-        const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
-        if (state.correction.verseNumber < verses.length) {
-          state.correction.verseNumber++;
-          state.correction.wordResults = [];
-          state.correction.selectedWordIdx = -1;
-          renderCorrectionView();
+        stopContinuousSimulation();
+        advanceCorrectionToNextVerseOrSurah(false);
+      });
+    }
+    if (DOM.btnCorrAutoAdvance) {
+      DOM.btnCorrAutoAdvance.addEventListener('click', () => {
+        state.correction.autoAdvance = !state.correction.autoAdvance;
+        DOM.btnCorrAutoAdvance.classList.toggle('active', state.correction.autoAdvance);
+        DOM.btnCorrAutoAdvance.setAttribute('aria-pressed', state.correction.autoAdvance ? 'true' : 'false');
+        DOM.btnCorrAutoAdvance.textContent = state.correction.autoAdvance
+          ? 'Sambung Otomatis (Ayat & Surah): ON'
+          : 'Sambung Otomatis (Ayat & Surah): OFF';
+        if (!state.correction.autoAdvance) {
+          stopContinuousSimulation();
+          cancelCorrAutoAdvance(true);
         }
+      });
+    }
+    if (DOM.btnCorrAutoQari) {
+      DOM.btnCorrAutoQari.addEventListener('click', () => {
+        state.correction.autoPlayQariOnMistake = !state.correction.autoPlayQariOnMistake;
+        DOM.btnCorrAutoQari.classList.toggle('active', state.correction.autoPlayQariOnMistake);
+        DOM.btnCorrAutoQari.setAttribute('aria-pressed', state.correction.autoPlayQariOnMistake ? 'true' : 'false');
+        DOM.btnCorrAutoQari.textContent = state.correction.autoPlayQariOnMistake
+          ? 'Putar Qari Saat Salah: ON'
+          : 'Putar Qari Saat Salah: OFF';
+      });
+    }
+    if (DOM.btnCorrHoldVerse) {
+      DOM.btnCorrHoldVerse.addEventListener('click', () => {
+        stopContinuousSimulation();
+        cancelCorrAutoAdvance(true);
+      });
+    }
+    if (DOM.btnCorrClearHistory) {
+      DOM.btnCorrClearHistory.addEventListener('click', () => {
+        state.correction.sessionHistory = [];
+        renderCorrectionSessionHistory();
       });
     }
     if (DOM.btnCorrBlind) {
@@ -1249,29 +1584,49 @@
       DOM.btnCorrMic.addEventListener('click', () => {
         if (state.recognition) {
           toggleListening();
-          if (DOM.corrMicLabel) {
-            DOM.corrMicLabel.textContent = state.isListening
-              ? 'Sedang Menyimak...'
-              : 'Mulai Rekam & Koreksi Suara';
-          }
         } else {
-          // Fallback jika browser tidak mendukung Web Speech API
-          if (DOM.btnCorrSimMistake) DOM.btnCorrSimMistake.click();
+          // Fallback jika browser tidak mendukung Web Speech API: jalankan simulasi tasmi' bersambung
+          if (DOM.btnCorrSimContinuous) DOM.btnCorrSimContinuous.click();
         }
+      });
+    }
+    if (DOM.btnCorrSimContinuous) {
+      DOM.btnCorrSimContinuous.addEventListener('click', () => {
+        if (state.correction.isContinuousSimulating) {
+          stopContinuousSimulation();
+          cancelCorrAutoAdvance(true);
+          return;
+        }
+        if (!state.correction.autoAdvance) {
+          state.correction.autoAdvance = true;
+          if (DOM.btnCorrAutoAdvance) {
+            DOM.btnCorrAutoAdvance.classList.add('active');
+            DOM.btnCorrAutoAdvance.setAttribute('aria-pressed', 'true');
+            DOM.btnCorrAutoAdvance.textContent = 'Sambung Otomatis (Ayat & Surah): ON';
+          }
+        }
+        state.correction.isContinuousSimulating = true;
+        DOM.btnCorrSimContinuous.classList.add('active');
+        DOM.btnCorrSimContinuous.textContent = "⏹ Hentikan Simulasi Tasmi' Bersambung";
+        runSingleContinuousSimulationStep();
       });
     }
     if (DOM.btnCorrSimPerfect) {
       DOM.btnCorrSimPerfect.addEventListener('click', () => {
+        stopContinuousSimulation();
         const v = getCorrectionActiveVerse();
         if (!v) return;
+        state.correction.lastFinalizedKey = null;
         if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = v.text_uthmani;
-        evaluateCorrectionWords(v.text_uthmani);
+        evaluateCorrectionWords(v.text_uthmani, { isFinal: true, triggerAutoAdvance: true });
       });
     }
     if (DOM.btnCorrSimMistake) {
       DOM.btnCorrSimMistake.addEventListener('click', () => {
+        stopContinuousSimulation();
         const v = getCorrectionActiveVerse();
         if (!v) return;
+        state.correction.lastFinalizedKey = null;
         const tokens = v.text_uthmani.split(/\s+/).filter(Boolean);
         const mutated = tokens.map((tok, i) => {
           if (tokens.length >= 3 && i === 1) return tok.slice(0, Math.max(1, tok.length - 2)); // Kurang tepat
@@ -1280,13 +1635,15 @@
         });
         const simulatedText = mutated.join(' ');
         if (DOM.corrTranscriptInput) DOM.corrTranscriptInput.value = simulatedText;
-        evaluateCorrectionWords(simulatedText);
+        evaluateCorrectionWords(simulatedText, { isFinal: true, triggerAutoAdvance: true });
       });
     }
     if (DOM.btnCorrEvaluate) {
       DOM.btnCorrEvaluate.addEventListener('click', () => {
+        stopContinuousSimulation();
+        state.correction.lastFinalizedKey = null;
         const val = DOM.corrTranscriptInput ? DOM.corrTranscriptInput.value : '';
-        evaluateCorrectionWords(val);
+        evaluateCorrectionWords(val, { isFinal: true, triggerAutoAdvance: true });
       });
     }
 

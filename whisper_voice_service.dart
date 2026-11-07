@@ -587,6 +587,7 @@ class WhisperVoiceHifzController extends ChangeNotifier {
 
   /// Callback opsional agar tab Koreksi Bacaan dapat menerima transkrip suara langsung.
   void Function(String transcript)? onLiveTranscriptCallback;
+  void Function(String transcript, bool isFinal)? onLiveTranscriptDetailedCallback;
 
   Verse? _currentVerse;
   List<DualPathCandidate> _dualPathCandidates = const [];
@@ -627,13 +628,17 @@ class WhisperVoiceHifzController extends ChangeNotifier {
       case 'onVoiceTranscript':
         final args = call.arguments;
         String text = '';
+        bool isFinal = false;
         if (args is Map) {
           text = (args['text'] ?? '').toString().trim();
+          isFinal = args['isFinal'] == true;
         } else if (args is String) {
           text = args.trim();
+          isFinal = true;
         }
         if (text.isNotEmpty) {
           onLiveTranscriptCallback?.call(text);
+          onLiveTranscriptDetailedCallback?.call(text, isFinal);
           await processIncomingTranscript(text);
         }
         break;
@@ -737,6 +742,7 @@ class WhisperVoiceHifzController extends ChangeNotifier {
                 await transcriberEngine!.transcribePcm16kHz(windowBytes);
             if (transcript.isNotEmpty) {
               onLiveTranscriptCallback?.call(transcript);
+              onLiveTranscriptDetailedCallback?.call(transcript, true);
               await processIncomingTranscript(transcript);
             }
           }
@@ -760,6 +766,17 @@ class WhisperVoiceHifzController extends ChangeNotifier {
           'Mikrofon Aktif (16kHz Mono + VAD): Menyimak bacaan Anda secara real-time...',
     );
     notifyListeners();
+  }
+
+  Future<void> resetRecognitionBufferForNextVerse() async {
+    if (!_state.isListening) return;
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      try {
+        if (Platform.isAndroid) {
+          await _nativeChannel.invokeMethod('startVoiceRecognition');
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> stopListening() async {
