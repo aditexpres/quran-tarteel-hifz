@@ -271,11 +271,11 @@ def build_full_30_juz():
             nxt_words = nxt["text_uthmani"].split()[:4]
             verse_next_words_map[curr["id"]] = " ".join(nxt_words)
 
-    # 5. Algoritma Pencocokan Mutasyabihat Cepat (Inverted Index)
+    # 5. Algoritma Pencocokan Mutasyabihat Cepat & Komprehensif (Same-Surah & Cross-Surah, Termasuk Ayat Kembar Identik 100%)
     print("[4/5] Memetakan pasangan ayat mutasyabihat di seluruh 30 Juz...", flush=True)
     t_mut_start = time.time()
 
-    # Index kata-kata pembeda
+    # Index kata-kata pembeda untuk perbandingan Lintas Surah
     word_to_vindices = defaultdict(list)
     v_tokens = []
     for idx, v in enumerate(all_verses):
@@ -285,14 +285,43 @@ def build_full_30_juz():
             if len(w) >= 3:
                 word_to_vindices[w].append(idx)
 
-    # Bangun kandidat pasangan ayat (yang memiliki kata-kata berbobot sama)
+    # Bangun kandidat pasangan ayat lintas surah
     candidate_pairs = set()
     for w, vids in word_to_vindices.items():
-        if len(vids) < 2 or len(vids) > 120:  # Abaikan kata penghubung yang terlalu sering muncul
+        if len(vids) < 2 or len(vids) > 150:
             continue
         for i in range(len(vids)):
             for j in range(i + 1, len(vids)):
                 candidate_pairs.add((vids[i], vids[j]))
+
+    # Tambahkan seluruh pasangan dalam surah yang sama (menjamin 0% missed internal mutasyabihat)
+    surah_to_indices = defaultdict(list)
+    for idx, v in enumerate(all_verses):
+        surah_to_indices[v["surah_id"]].append(idx)
+
+    for sid, indices in surah_to_indices.items():
+        for i_pos in range(len(indices)):
+            for j_pos in range(i_pos + 1, len(indices)):
+                candidate_pairs.add((indices[i_pos], indices[j_pos]))
+
+    # Identifikasi refrains berulang > 4 kali dalam satu surah (seperti Ar-Rahman 31x, Al-Mursalat 10x, Ash-Shu'ara 8x)
+    surah_text_occurrences = defaultdict(list)
+    for idx, v in enumerate(all_verses):
+        if len(v_tokens[idx]) >= 2:
+            key = (v["surah_id"], v["text_clean"])
+            surah_text_occurrences[key].append(idx)
+
+    heavy_refrain_pairs = set()
+    heavy_refrain_consecutive_pairs = set()
+
+    for key, occs in surah_text_occurrences.items():
+        if len(occs) > 4:
+            for i_pos in range(len(occs)):
+                for j_pos in range(i_pos + 1, len(occs)):
+                    heavy_refrain_pairs.add((occs[i_pos], occs[j_pos]))
+            # Rantai berurutan (consecutive chaining) agar tiap kemunculan terwakili dengan transisi berikutnya
+            for k in range(len(occs) - 1):
+                heavy_refrain_consecutive_pairs.add((occs[k], occs[k + 1]))
 
     print(f"  -> Kandidat pasangan untuk diverifikasi: {len(candidate_pairs)} pasangan.", flush=True)
 
@@ -300,7 +329,14 @@ def build_full_30_juz():
     group_id = 1
     SIMILARITY_THRESHOLD = 0.72
 
-    for (i, j) in candidate_pairs:
+    sorted_candidate_pairs = sorted(list(candidate_pairs))
+
+    for (i, j) in sorted_candidate_pairs:
+        # Jika termasuk heavy refrain, hanya ambil pasangan berurutan (consecutive chaining)
+        if (i, j) in heavy_refrain_pairs:
+            if (i, j) not in heavy_refrain_consecutive_pairs:
+                continue
+
         v1 = all_verses[i]
         v2 = all_verses[j]
 
@@ -312,6 +348,8 @@ def build_full_30_juz():
         tok2 = v_tokens[j]
         if not tok1 or not tok2:
             continue
+        if len(tok1) < 2 or len(tok2) < 2:
+            continue
 
         # Filter cepat rasio panjang kata
         len_ratio = min(len(tok1), len(tok2)) / max(len(tok1), len(tok2))
@@ -321,12 +359,13 @@ def build_full_30_juz():
         # Jaccard overlap kata
         s1, s2 = set(tok1), set(tok2)
         jaccard = len(s1 & s2) / len(s1 | s2)
-        if jaccard < 0.45:
+        if jaccard < 0.40:
             continue
 
         # Hitung rasio SequenceMatcher token
         ratio = difflib.SequenceMatcher(None, tok1, tok2).ratio()
-        if ratio >= SIMILARITY_THRESHOLD and ratio < 1.0:
+        # KUNCI: ratio >= SIMILARITY_THRESHOLD dan MEMPERBOLEHKAN ratio == 1.0 (Ayat Kembar Identik!)
+        if ratio >= SIMILARITY_THRESHOLD:
             diff1, diff2 = compute_diff_words(tok1, tok2)
             next_words_1 = verse_next_words_map.get(v1["id"], "")
             next_words_2 = verse_next_words_map.get(v2["id"], "")
@@ -340,10 +379,17 @@ def build_full_30_juz():
             )
             nw1 = next_words_1 if next_words_1 else "[Akhir Surah]"
             nw2 = next_words_2 if next_words_2 else "[Akhir Surah]"
-            desc = (
-                f"Tingkat kemiripan {int(ratio * 100)}%. "
-                f"Waspadai transisi ke ayat selanjutnya: '{nw1}' vs '{nw2}'."
-            )
+
+            if ratio >= 0.999:
+                desc = (
+                    f"Tingkat kemiripan 100% (Ayat Kembar Identik). "
+                    f"Waspadai transisi ke ayat selanjutnya: '{nw1}' vs '{nw2}'."
+                )
+            else:
+                desc = (
+                    f"Tingkat kemiripan {int(ratio * 100)}%. "
+                    f"Waspadai transisi ke ayat selanjutnya: '{nw1}' vs '{nw2}'."
+                )
 
             mutasyabihat.append({
                 "group_id": group_id,

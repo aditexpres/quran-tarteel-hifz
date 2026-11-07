@@ -637,6 +637,8 @@ class _MarkedMushafMutasyabihatViewState
     final nextCurrent = isSide1 ? pair.nextVerseStartWords1 : pair.nextVerseStartWords2;
     final nextTwin = isSide1 ? pair.nextVerseStartWords2 : pair.nextVerseStartWords1;
 
+    final isIdentical = pair.diffWordPositions1.isEmpty && pair.diffWordPositions2.isEmpty;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -673,6 +675,23 @@ class _MarkedMushafMutasyabihatViewState
                         ),
                       ),
                     ),
+                    if (isIdentical)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: goldColor.withOpacity(0.20),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: goldColor.withOpacity(0.6)),
+                        ),
+                        child: Text(
+                          'Kembar Identik (100%)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: goldColor,
+                          ),
+                        ),
+                      ),
                     Text(
                       'QS. ${verse.surahNameLatin ?? verse.surahId}:${verse.verseNumber} ⇄ QS. $twinSurahName:$twinVerseNum',
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),

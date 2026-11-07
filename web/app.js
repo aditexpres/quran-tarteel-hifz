@@ -558,8 +558,10 @@
     DOM.inspectorTitle.textContent = `QS. ${currentVerse.surah_name_latin} : ${currentVerse.verse_number} ⇄ QS. ${twinSurahName} : ${twinVerseNum}`;
 
     const savedAnchor = localStorage.getItem(`memory_anchor_${pair.group_id}`) || '';
+    const isIdentical = (!currentDiff || !currentDiff.length) && (!twinDiff || !twinDiff.length);
 
     DOM.inspectorBody.innerHTML = `
+      ${isIdentical ? '<div style="margin-bottom:10px; padding:6px 12px; background:rgba(217, 179, 108, 0.15); border-radius:6px; font-size:12px; font-weight:600; color:var(--text-primary); border:1px solid rgba(217, 179, 108, 0.4);">⚡ Ayat Kembar Identik (100% sama persis). Poin kunci hafalan terletak pada transisi kelanjutan ayatnya!</div>' : ''}
       <div class="inspector-compare-grid">
         <div class="inspector-box">
           <div class="inspector-box-header">
@@ -822,10 +824,15 @@
       const formattedText1 = highlightDiffWords(pair.text_1, pair.diff_1);
       const formattedText2 = highlightDiffWords(pair.text_2, pair.diff_2);
 
+      const isIdentical = (!pair.diff_1 || !pair.diff_1.length) && (!pair.diff_2 || !pair.diff_2.length);
+
       card.innerHTML = `
         <div class="m-card-header">
           <span class="m-title">${pair.title}</span>
-          <span class="m-scope-badge">Juz ${pair.scope_juz || '30'}</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${isIdentical ? '<span class="m-scope-badge" style="background:rgba(217, 179, 108, 0.2); border:1px solid rgba(217, 179, 108, 0.45); font-weight:700;">Kembar Identik (100%)</span>' : ''}
+            <span class="m-scope-badge">${pair.scope_juz ? 'Juz ' + pair.scope_juz : 'Lintas Juz'}</span>
+          </div>
         </div>
 
         <div class="m-pair-grid">

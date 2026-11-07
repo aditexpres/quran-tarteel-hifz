@@ -2808,7 +2808,7 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Memetakan 296 pasangan ayat serupa di seluruh 30 Juz Al-Qur\'an agar hafalan Anda tidak tertukar atau melompat surah.',
+                'Memetakan 497 pasangan ayat serupa di seluruh 30 Juz Al-Qur\'an (termasuk ayat kembar identik 100%) agar hafalan Anda tidak tertukar atau melompat surah.',
                 style: TextStyle(fontSize: 13.5, color: textSecondary),
               ),
               const SizedBox(height: 16),
@@ -3056,21 +3056,45 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: goldColor.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: goldColor.withOpacity(0.45)),
-                ),
-                child: Text(
-                  'Juz ${pair.juzNumber1}',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: goldColor,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pair.diffWordPositions1.isEmpty && pair.diffWordPositions2.isEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: goldColor.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: goldColor.withOpacity(0.55)),
+                      ),
+                      child: Text(
+                        'Kembar Identik (100%)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: goldColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: goldColor.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: goldColor.withOpacity(0.45)),
+                    ),
+                    child: Text(
+                      'Juz ${pair.juzNumber1}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: goldColor,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
