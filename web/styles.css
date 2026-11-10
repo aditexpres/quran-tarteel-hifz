@@ -1815,5 +1815,732 @@ html.dark .corr-word-chip.status-wrong {
 
 .surah-picker-item:hover {
   border-color: var(--primary) !important;
-  background-color: var(--hover-card) !important;
+  background-color: var(--bg-card-hover) !important;
+}
+
+/* ==========================================================================
+   15. MODEL AL-QUR'AN DASAR ALA QURAN.GTAF.ORG (SIDEBAR, WBW, AYAT, & AUDIO)
+   ========================================================================== */
+:root {
+  --gtaf-ar-scale: 1;
+}
+
+.gtaf-layout-container {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.gtaf-layout-container.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gtaf-layout-container.sidebar-collapsed .gtaf-sidebar {
+  display: none;
+}
+
+/* Sidebar Indeks Kiri */
+.gtaf-sidebar {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 74px;
+  max-height: calc(100vh - 94px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gtaf-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-mushaf);
+}
+
+.gtaf-sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary);
+  font-size: 0.92rem;
+}
+
+.gtaf-idx-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-subtle);
+  padding: 4px;
+  gap: 4px;
+}
+
+.gtaf-idx-tab {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 36px;
+  transition: all var(--transition-fast);
+}
+
+.gtaf-idx-tab:hover {
+  color: var(--text-primary);
+}
+
+.gtaf-idx-tab.active {
+  background-color: var(--bg-surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.gtaf-pin-count {
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+}
+
+.gtaf-sidebar-search-box {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gtaf-sidebar-search-box .search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-card);
+  min-height: 38px;
+}
+
+.gtaf-last-read-banner {
+  margin: 8px 10px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--accent-gold-subtle);
+  border: 1px solid var(--accent-gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gtaf-last-read-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gtaf-last-read-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+.gtaf-last-read-info strong {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gtaf-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gtaf-idx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.gtaf-idx-item:hover {
+  border-color: var(--primary);
+  background-color: var(--bg-card-hover);
+}
+
+.gtaf-idx-item.active {
+  border-color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.gtaf-idx-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gtaf-idx-num {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gtaf-idx-item.active .gtaf-idx-num {
+  background-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.gtaf-idx-meta {
+  min-width: 0;
+}
+
+.gtaf-idx-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gtaf-idx-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gtaf-idx-arabic {
+  font-family: var(--font-arabic);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  flex-shrink: 0;
+}
+
+/* Kolom Utama GTAF */
+.gtaf-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.gtaf-top-toolbar {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gtaf-toolbar-row-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gtaf-nav-quick-group,
+.gtaf-view-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gtaf-display-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gtaf-toggles-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.gtaf-font-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gtaf-font-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Banner Kepala Surah GTAF */
+.gtaf-surah-banner-card {
+  background-color: var(--bg-mushaf);
+  border: 1.5px solid var(--border-ornament);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gtaf-surah-banner-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.gtaf-surah-num-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 4px;
+}
+
+.gtaf-surah-title-latin {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.gtaf-surah-submeta {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.gtaf-surah-meta-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.gtaf-surah-calligraphy {
+  font-family: var(--font-arabic);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.gtaf-bismillah-row {
+  text-align: center;
+  font-family: var(--font-arabic);
+  font-size: 1.65rem;
+  color: var(--text-arabic);
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-ornament);
+  letter-spacing: 0.02em;
+}
+
+/* Daftar Kartu Ayat Demi Ayat ala quran.gtaf.org */
+.gtaf-verse-reader-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gtaf-verses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gtaf-ayah-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 18px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.gtaf-ayah-card:hover {
+  border-color: var(--border-ornament);
+}
+
+.gtaf-ayah-card.active-playing {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-subtle);
+}
+
+/* Kolom Kiri Kartu Ayat: Nomor Ayat + Tombol Aksi Cepat */
+.gtaf-ayah-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-right: 1px solid var(--border-subtle);
+  padding-right: 14px;
+}
+
+.gtaf-ayah-key-badge {
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.86rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gtaf-ayah-subbadge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.gtaf-ayah-actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.gtaf-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  transition: all var(--transition-fast);
+}
+
+.gtaf-icon-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.gtaf-icon-btn.active {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.gtaf-icon-btn.bookmarked {
+  background-color: var(--accent-gold-subtle);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+/* Kolom Kanan Kartu Ayat: Teks Per Kata / Uthmani + Terjemah + Tafsir */
+.gtaf-ayah-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Alur Kata Demi Kata (Word-by-Word) RTL ala quran.gtaf.org */
+.gtaf-wbw-flow {
+  direction: rtl;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.gtaf-wbw-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-mushaf);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  min-width: 74px;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.gtaf-wbw-box:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-subtle);
+  transform: translateY(-1px);
+}
+
+.gtaf-wbw-ar {
+  font-family: var(--font-arabic);
+  font-size: calc(1.7rem * var(--gtaf-ar-scale, 1));
+  line-height: 1.65;
+  color: var(--text-arabic);
+  transition: filter 0.15s ease;
+}
+
+.gtaf-wbw-tr {
+  font-size: 0.72rem;
+  color: var(--accent-gold);
+  font-style: italic;
+  direction: ltr;
+  margin-top: 2px;
+}
+
+.gtaf-wbw-id {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  direction: ltr;
+  text-align: center;
+  margin-top: 3px;
+  max-width: 135px;
+  line-height: 1.3;
+}
+
+.gtaf-wbw-end-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-arabic);
+  font-size: calc(1.45rem * var(--gtaf-ar-scale, 1));
+  color: var(--accent-gold);
+  padding: 0 8px;
+  user-select: none;
+}
+
+/* Tampilan Baris Uthmani Utuh (Saat WBW Dimatikan) */
+.gtaf-pure-arabic-line {
+  direction: rtl;
+  text-align: right;
+  font-family: var(--font-arabic);
+  font-size: calc(1.95rem * var(--gtaf-ar-scale, 1));
+  line-height: 2.15;
+  color: var(--text-arabic);
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+/* Efek Blur Uji Hafalan */
+.gtaf-blur-hidden {
+  filter: blur(6px);
+  opacity: 0.35;
+}
+
+.gtaf-blur-hidden:hover {
+  filter: blur(2px);
+  opacity: 0.75;
+}
+
+/* Kotak Terjemahan Bahasa Indonesia Kemenag */
+.gtaf-ayah-translation-box {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  font-size: 0.94rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+.gtaf-translation-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+/* Kotak Tafsir Wajiz & Peringatan Mutasyabihat di Dalam Kartu Ayat */
+.gtaf-ayah-tafsir-box {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.gtaf-ayah-tafsir-box strong {
+  display: block;
+  color: var(--primary);
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.gtaf-ayah-twin-alert {
+  background-color: var(--accent-gold-subtle);
+  border: 1px solid var(--accent-gold-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gtaf-surah-footer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+}
+
+/* Sticky Bottom Audio Player Bar ala quran.gtaf.org */
+.gtaf-sticky-audio-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 95;
+  background-color: var(--bg-surface);
+  border-top: 2px solid var(--primary);
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.12);
+  padding: 10px 16px;
+}
+
+.gtaf-audio-bar-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gtaf-audio-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.gtaf-audio-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.gtaf-audio-track-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.gtaf-audio-track-meta strong {
+  font-size: 0.86rem;
+  color: var(--text-primary);
+}
+
+.gtaf-audio-track-meta span {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.gtaf-audio-transport,
+.gtaf-audio-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 920px) {
+  .gtaf-layout-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gtaf-sidebar {
+    position: static;
+    max-height: 420px;
+  }
+}
+
+@media (max-width: 640px) {
+  .gtaf-ayah-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .gtaf-ayah-rail {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-right: 0;
+    padding-bottom: 10px;
+    width: 100%;
+  }
 }

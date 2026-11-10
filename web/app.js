@@ -48,6 +48,26 @@
       sessionHistory: [],
       lastFinalizedKey: null,
       simCounter: 0
+    },
+    gtaf: {
+      viewMode: 'verse', // 'verse' (Ayat & Per Kata) | 'mushaf' (Mushaf 15 Baris)
+      sidebarOpen: true,
+      idxTab: 'surah', // 'surah' | 'juz' | 'page' | 'bookmarks'
+      idxSearch: '',
+      showVoicePanel: false,
+      showWbw: true,
+      showTranslit: true,
+      showTranslation: true,
+      showTafsirAll: false,
+      blurHifz: false,
+      arabicScale: 1.0,
+      autoNextAudio: true,
+      playingSurahId: null,
+      playingVerseNumber: null,
+      expandedTafsirKeys: new Set(),
+      revealedWordKeys: new Set(),
+      bookmarks: [],
+      lastRead: null
     }
   };
 
@@ -184,7 +204,58 @@
     modalAnchorInput: document.getElementById('modal-anchor-input'),
     btnCloseModal: document.getElementById('btn-close-modal'),
     btnCancelModal: document.getElementById('btn-cancel-modal'),
-    btnSaveModal: document.getElementById('btn-save-modal')
+    btnSaveModal: document.getElementById('btn-save-modal'),
+
+    // GTAF Basic Qur'an Reader Elements
+    gtafLayoutContainer: document.getElementById('gtaf-layout-container'),
+    gtafSidebar: document.getElementById('gtaf-sidebar'),
+    btnGtafCloseSidebar: document.getElementById('btn-gtaf-close-sidebar'),
+    btnGtafToggleSidebar: document.getElementById('btn-gtaf-toggle-sidebar'),
+    gtafIdxTabs: document.querySelectorAll('.gtaf-idx-tab'),
+    gtafSidebarSearch: document.getElementById('gtaf-sidebar-search'),
+    gtafPinCount: document.getElementById('gtaf-pin-count'),
+    gtafLastReadBanner: document.getElementById('gtaf-last-read-banner'),
+    gtafLastReadText: document.getElementById('gtaf-last-read-text'),
+    btnGtafResumeRead: document.getElementById('btn-gtaf-resume-read'),
+    gtafSidebarList: document.getElementById('gtaf-sidebar-list'),
+    gtafSurahSelect: document.getElementById('gtaf-surah-select'),
+    gtafVerseSelect: document.getElementById('gtaf-verse-select'),
+    btnGtafModeVerse: document.getElementById('btn-gtaf-mode-verse'),
+    btnGtafModeMushaf: document.getElementById('btn-gtaf-mode-mushaf'),
+    btnGtafToggleVoicePanel: document.getElementById('btn-gtaf-toggle-voice-panel'),
+    gtafVoicePanel: document.getElementById('gtaf-voice-panel'),
+    btnGtafOptWbw: document.getElementById('btn-gtaf-opt-wbw'),
+    btnGtafOptTranslit: document.getElementById('btn-gtaf-opt-translit'),
+    btnGtafOptTranslation: document.getElementById('btn-gtaf-opt-translation'),
+    btnGtafOptTafsir: document.getElementById('btn-gtaf-opt-tafsir'),
+    btnGtafOptBlur: document.getElementById('btn-gtaf-opt-blur'),
+    btnGtafFontDec: document.getElementById('btn-gtaf-font-dec'),
+    btnGtafFontReset: document.getElementById('btn-gtaf-font-reset'),
+    btnGtafFontInc: document.getElementById('btn-gtaf-font-inc'),
+    gtafVerseReaderView: document.getElementById('gtaf-verse-reader-view'),
+    gtafMushafSheetView: document.getElementById('gtaf-mushaf-sheet-view'),
+    gtafBannerNum: document.getElementById('gtaf-banner-num'),
+    gtafBannerLatin: document.getElementById('gtaf-banner-latin'),
+    gtafBannerMeta: document.getElementById('gtaf-banner-meta'),
+    gtafBannerArabic: document.getElementById('gtaf-banner-arabic'),
+    btnGtafPlaySurah: document.getElementById('btn-gtaf-play-surah'),
+    gtafBismillahRow: document.getElementById('gtaf-bismillah-row'),
+    gtafVersesList: document.getElementById('gtaf-verses-list'),
+    btnGtafPrevSurah: document.getElementById('btn-gtaf-prev-surah'),
+    btnGtafScrollTop: document.getElementById('btn-gtaf-scroll-top'),
+    btnGtafNextSurah: document.getElementById('btn-gtaf-next-surah'),
+
+    // Sticky Audio Bar Elements
+    gtafStickyAudioBar: document.getElementById('gtaf-sticky-audio-bar'),
+    gtafAudioTitle: document.getElementById('gtaf-audio-title'),
+    gtafAudioSubtitle: document.getElementById('gtaf-audio-subtitle'),
+    btnGtafAudioPrev: document.getElementById('btn-gtaf-audio-prev'),
+    btnGtafAudioPlay: document.getElementById('btn-gtaf-audio-play'),
+    btnGtafAudioNext: document.getElementById('btn-gtaf-audio-next'),
+    gtafAudioReciter: document.getElementById('gtaf-audio-reciter'),
+    btnGtafAudioAutonext: document.getElementById('btn-gtaf-audio-autonext'),
+    btnGtafAudioLoop: document.getElementById('btn-gtaf-audio-loop'),
+    btnGtafAudioClose: document.getElementById('btn-gtaf-audio-close')
   };
 
   let activeEditingGroupId = null;
@@ -256,6 +327,7 @@
     if (!state.data) return;
 
     initTheme();
+    initGtafState();
     populateSurahDropdown();
     setupEventListeners();
     setupSpeechRecognition();
@@ -264,6 +336,40 @@
     renderCorrectionView();
     renderRadarMutasyabihat();
     initDrillQuestions();
+  }
+
+  function initGtafState() {
+    try {
+      const savedPins = localStorage.getItem('quran_gtaf_bookmarks');
+      if (savedPins) {
+        state.gtaf.bookmarks = JSON.parse(savedPins) || [];
+      }
+      const savedLast = localStorage.getItem('quran_gtaf_last_read');
+      if (savedLast) {
+        state.gtaf.lastRead = JSON.parse(savedLast) || null;
+      }
+    } catch (_) {}
+  }
+
+  function saveGtafBookmarks() {
+    try {
+      localStorage.setItem('quran_gtaf_bookmarks', JSON.stringify(state.gtaf.bookmarks));
+    } catch (_) {}
+  }
+
+  function setGtafLastRead(verse) {
+    if (!verse) return;
+    const surah = state.data.surahs.find(s => s.id === verse.surah_id);
+    state.gtaf.lastRead = {
+      surahId: verse.surah_id,
+      surahName: surah ? surah.name_latin : (verse.surah_name_latin || `Surah ${verse.surah_id}`),
+      verseNumber: verse.verse_number,
+      pageNumber: verse.page_number
+    };
+    try {
+      localStorage.setItem('quran_gtaf_last_read', JSON.stringify(state.gtaf.lastRead));
+    } catch (_) {}
+    renderGtafSidebar();
   }
 
   function initTheme() {
@@ -404,6 +510,547 @@
 
     // Tampilkan detail ayat pertama
     selectActiveVerse(verses[0], 0);
+
+    // Sinkronkan juga tampilan Al-Qur'an Dasar model quran.gtaf.org
+    renderGtafSidebar();
+    renderGtafReaderView();
+  }
+
+  // =========================================================================
+  // 4A. ENGINE PEMBACA AL-QUR'AN DASAR MODEL QURAN.GTAF.ORG
+  // =========================================================================
+  function jumpToSurahAndVerse(surahId, verseNumber = 1, smoothScroll = true) {
+    stopContinuousSimulation();
+    cancelCorrAutoAdvance(true);
+    const sId = parseInt(surahId, 10);
+    const vNum = parseInt(verseNumber, 10) || 1;
+    const surahChanged = state.activeSurahId !== sId;
+    state.activeSurahId = sId;
+    state.activeVerseIndex = Math.max(0, vNum - 1);
+
+    const targetVerse = state.data.verses.find(v => v.surah_id === sId && v.verse_number === vNum) ||
+      state.data.verses.find(v => v.surah_id === sId);
+    if (targetVerse) {
+      state.activePageNumber = targetVerse.page_number;
+    }
+
+    if (DOM.surahSelect) DOM.surahSelect.value = String(sId);
+    if (surahChanged) {
+      renderMushafView();
+      renderMarkedMushafView();
+      state.correction.verseNumber = vNum;
+      state.correction.wordResults = [];
+      state.correction.lastFinalizedKey = null;
+      renderCorrectionView();
+      if (state.activeScope === 'surah') {
+        renderRadarMutasyabihat();
+      }
+    } else {
+      if (DOM.gtafVerseSelect) DOM.gtafVerseSelect.value = String(vNum);
+      if (targetVerse) selectActiveVerse(targetVerse, 0);
+      renderGtafSidebar();
+    }
+
+    if (smoothScroll) {
+      setTimeout(() => {
+        const cardEl = document.getElementById(`gtaf-ayah-${sId}-${vNum}`);
+        if (cardEl && state.gtaf.viewMode === 'verse') {
+          cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+    }
+  }
+
+  function renderGtafSidebar() {
+    if (!DOM.gtafSidebarList) return;
+
+    if (DOM.gtafPinCount) {
+      DOM.gtafPinCount.textContent = String(state.gtaf.bookmarks.length);
+    }
+
+    if (DOM.gtafLastReadBanner && DOM.gtafLastReadText) {
+      if (state.gtaf.lastRead) {
+        DOM.gtafLastReadBanner.classList.remove('hidden');
+        DOM.gtafLastReadText.textContent = `QS. ${state.gtaf.lastRead.surahName} : Ayat ${state.gtaf.lastRead.verseNumber}`;
+      } else {
+        DOM.gtafLastReadBanner.classList.add('hidden');
+      }
+    }
+
+    const q = (state.gtaf.idxSearch || '').toLowerCase().trim();
+    const tab = state.gtaf.idxTab || 'surah';
+    DOM.gtafSidebarList.innerHTML = '';
+
+    if (tab === 'surah') {
+      const surahs = (state.data.surahs || []).filter(s => {
+        if (!q) return true;
+        return s.name_latin.toLowerCase().includes(q) ||
+          s.translation_id.toLowerCase().includes(q) ||
+          s.name_arabic.includes(q) ||
+          String(s.id) === q;
+      });
+
+      if (!surahs.length) {
+        DOM.gtafSidebarList.innerHTML = `<div style="padding:20px; text-align:center; font-size:0.82rem; color:var(--text-secondary);">Surah tidak ditemukan.</div>`;
+        return;
+      }
+
+      surahs.forEach(s => {
+        const isActive = s.id === state.activeSurahId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `gtaf-idx-item ${isActive ? 'active' : ''}`;
+        btn.innerHTML = `
+          <div class="gtaf-idx-left">
+            <span class="gtaf-idx-num">${s.id}</span>
+            <div class="gtaf-idx-meta">
+              <div class="gtaf-idx-title">${s.name_latin}</div>
+              <div class="gtaf-idx-sub">${s.translation_id} • ${s.total_verses} Ayat</div>
+            </div>
+          </div>
+          <span class="gtaf-idx-arabic">${s.name_arabic}</span>
+        `;
+        btn.addEventListener('click', () => {
+          jumpToSurahAndVerse(s.id, 1, false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        DOM.gtafSidebarList.appendChild(btn);
+      });
+    } else if (tab === 'juz') {
+      const juzMap = new Map();
+      (state.data.verses || []).forEach(v => {
+        if (!juzMap.has(v.juz_number)) {
+          juzMap.set(v.juz_number, v);
+        }
+      });
+
+      const juzList = [];
+      for (let j = 1; j <= 30; j++) {
+        const firstV = juzMap.get(j);
+        if (firstV) {
+          const sObj = state.data.surahs.find(s => s.id === firstV.surah_id);
+          juzList.push({
+            juz: j,
+            surahId: firstV.surah_id,
+            surahName: sObj ? sObj.name_latin : firstV.surah_name_latin,
+            verseNumber: firstV.verse_number,
+            pageNumber: firstV.page_number
+          });
+        }
+      }
+
+      const filteredJuz = juzList.filter(item => {
+        if (!q) return true;
+        return String(item.juz).includes(q) ||
+          `juz ${item.juz}`.includes(q) ||
+          item.surahName.toLowerCase().includes(q);
+      });
+
+      filteredJuz.forEach(item => {
+        const activeFirst = state.data.verses.find(v => v.surah_id === state.activeSurahId);
+        const isActive = activeFirst && activeFirst.juz_number === item.juz;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `gtaf-idx-item ${isActive ? 'active' : ''}`;
+        btn.innerHTML = `
+          <div class="gtaf-idx-left">
+            <span class="gtaf-idx-num">${item.juz}</span>
+            <div class="gtaf-idx-meta">
+              <div class="gtaf-idx-title">Juz ${item.juz}</div>
+              <div class="gtaf-idx-sub">Mulai QS. ${item.surahName} : ${item.verseNumber} • Hal ${item.pageNumber}</div>
+            </div>
+          </div>
+          <span class="gtaf-idx-arabic">الجزء ${toArabicDigits(item.juz)}</span>
+        `;
+        btn.addEventListener('click', () => {
+          jumpToSurahAndVerse(item.surahId, item.verseNumber, true);
+        });
+        DOM.gtafSidebarList.appendChild(btn);
+      });
+    } else if (tab === 'page') {
+      const pageMap = new Map();
+      (state.data.verses || []).forEach(v => {
+        if (!pageMap.has(v.page_number)) {
+          pageMap.set(v.page_number, v);
+        }
+      });
+
+      const pages = Array.from(pageMap.keys()).sort((a, b) => a - b);
+      const filteredPages = pages.filter(p => {
+        if (!q) return true;
+        const firstV = pageMap.get(p);
+        const sName = (firstV && firstV.surah_name_latin ? firstV.surah_name_latin : '').toLowerCase();
+        return String(p).includes(q) || sName.includes(q);
+      }).slice(0, 120);
+
+      filteredPages.forEach(p => {
+        const firstV = pageMap.get(p);
+        const isActive = state.activePageNumber === p;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `gtaf-idx-item ${isActive ? 'active' : ''}`;
+        btn.innerHTML = `
+          <div class="gtaf-idx-left">
+            <span class="gtaf-idx-num">${p}</span>
+            <div class="gtaf-idx-meta">
+              <div class="gtaf-idx-title">Halaman ${p}</div>
+              <div class="gtaf-idx-sub">QS. ${firstV.surah_name_latin} : ${firstV.verse_number} • Juz ${firstV.juz_number}</div>
+            </div>
+          </div>
+          <span class="gtaf-idx-arabic">${toArabicDigits(p)}</span>
+        `;
+        btn.addEventListener('click', () => {
+          state.activePageNumber = p;
+          jumpToSurahAndVerse(firstV.surah_id, firstV.verse_number, true);
+        });
+        DOM.gtafSidebarList.appendChild(btn);
+      });
+    } else if (tab === 'bookmarks') {
+      const pins = (state.gtaf.bookmarks || []).filter(b => {
+        if (!q) return true;
+        return b.surahName.toLowerCase().includes(q) || String(b.key).includes(q);
+      });
+
+      if (!pins.length) {
+        DOM.gtafSidebarList.innerHTML = `
+          <div style="padding:20px 12px; text-align:center; font-size:0.8rem; color:var(--text-secondary); line-height:1.5;">
+            Belum ada ayat yang disimpan.<br>Klik ikon <strong>Pin (🔖)</strong> pada kartu ayat untuk menandai ayat favorit atau batas hafalan.
+          </div>
+        `;
+        return;
+      }
+
+      pins.forEach(b => {
+        const row = document.createElement('div');
+        row.className = 'gtaf-idx-item';
+        row.innerHTML = `
+          <div class="gtaf-idx-left" style="flex:1; cursor:pointer;">
+            <span class="gtaf-idx-num">${b.surahId}:${b.verseNumber}</span>
+            <div class="gtaf-idx-meta">
+              <div class="gtaf-idx-title">QS. ${b.surahName} : Ayat ${b.verseNumber}</div>
+              <div class="gtaf-idx-sub">Hal ${b.pageNumber} • Juz ${b.juzNumber}</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-remove-pin" data-key="${b.key}" title="Hapus Penanda" aria-label="Hapus Penanda">✕</button>
+        `;
+        row.querySelector('.gtaf-idx-left').addEventListener('click', () => {
+          jumpToSurahAndVerse(b.surahId, b.verseNumber, true);
+        });
+        row.querySelector('.btn-remove-pin').addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.gtaf.bookmarks = state.gtaf.bookmarks.filter(item => item.key !== b.key);
+          saveGtafBookmarks();
+          renderGtafSidebar();
+          renderGtafReaderView();
+        });
+        DOM.gtafSidebarList.appendChild(row);
+      });
+    }
+  }
+
+  function renderGtafReaderView() {
+    if (!DOM.gtafVersesList) return;
+
+    const surahs = state.data.surahs || [];
+    const surahIdx = surahs.findIndex(s => s.id === state.activeSurahId);
+    const surah = surahs[surahIdx] || surahs[0];
+    if (!surah) return;
+
+    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!verses.length) return;
+
+    // Populate top dropdowns
+    if (DOM.gtafSurahSelect) {
+      if (DOM.gtafSurahSelect.options.length !== surahs.length) {
+        DOM.gtafSurahSelect.innerHTML = '';
+        surahs.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id}. QS. ${s.name_latin} (${s.total_verses} Ayat)`;
+          DOM.gtafSurahSelect.appendChild(opt);
+        });
+      }
+      DOM.gtafSurahSelect.value = String(surah.id);
+    }
+
+    if (DOM.gtafVerseSelect) {
+      DOM.gtafVerseSelect.innerHTML = '';
+      verses.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.verse_number;
+        opt.textContent = `Loncat: Ayat ${v.verse_number}`;
+        DOM.gtafVerseSelect.appendChild(opt);
+      });
+      const currentVNum = Math.min(verses.length, Math.max(1, state.activeVerseIndex + 1));
+      DOM.gtafVerseSelect.value = String(currentVNum);
+    }
+
+    // Update Banner Surah
+    const firstPage = verses[0].page_number;
+    const lastPage = verses[verses.length - 1].page_number;
+    const pageText = firstPage === lastPage ? `Halaman ${firstPage}` : `Halaman ${firstPage}-${lastPage}`;
+    const revText = surah.revelation_type === 'madaniyah' ? 'Madaniyah' : 'Makkiyah';
+
+    if (DOM.gtafBannerNum) DOM.gtafBannerNum.textContent = `Surah Ke-${surah.id}`;
+    if (DOM.gtafBannerLatin) DOM.gtafBannerLatin.textContent = `QS. ${surah.name_latin} (${surah.translation_id})`;
+    if (DOM.gtafBannerMeta) {
+      DOM.gtafBannerMeta.textContent = `${revText} • ${surah.total_verses} Ayat • Juz ${verses[0].juz_number} • ${pageText}`;
+    }
+    if (DOM.gtafBannerArabic) DOM.gtafBannerArabic.textContent = `سُورَةُ ${surah.name_arabic}`;
+    if (DOM.gtafBismillahRow) {
+      DOM.gtafBismillahRow.style.display = (surah.id === 1 || surah.id === 9) ? 'none' : 'block';
+    }
+
+    // Update Footer Prev/Next Surah
+    const prevSurah = surahIdx > 0 ? surahs[surahIdx - 1] : null;
+    const nextSurah = (surahIdx >= 0 && surahIdx + 1 < surahs.length) ? surahs[surahIdx + 1] : null;
+    if (DOM.btnGtafPrevSurah) {
+      DOM.btnGtafPrevSurah.disabled = !prevSurah;
+      DOM.btnGtafPrevSurah.textContent = prevSurah ? `◄ QS. ${prevSurah.name_latin}` : '◄ Awal Mushaf';
+    }
+    if (DOM.btnGtafNextSurah) {
+      DOM.btnGtafNextSurah.disabled = !nextSurah;
+      DOM.btnGtafNextSurah.textContent = nextSurah ? `QS. ${nextSurah.name_latin} ►` : 'Akhir Mushaf ►';
+    }
+
+    // Render Kartu Ayat Demi Ayat
+    DOM.gtafVersesList.innerHTML = '';
+
+    verses.forEach(v => {
+      const verseKey = `${v.surah_id}:${v.verse_number}`;
+      const isPlayingThis = state.gtaf.playingSurahId === v.surah_id &&
+        state.gtaf.playingVerseNumber === v.verse_number &&
+        DOM.globalAudio && !DOM.globalAudio.paused;
+      const isBookmarked = state.gtaf.bookmarks.some(b => b.key === verseKey);
+      const isTafsirOpen = state.gtaf.showTafsirAll || state.gtaf.expandedTafsirKeys.has(verseKey);
+
+      // Cek apakah memiliki pasangan Mutasyabihat
+      const twinPair = (state.data.mutasyabihat || []).find(p =>
+        (p.surah_id_1 === v.surah_id && p.verse_num_1 === v.verse_number) ||
+        (p.surah_id_2 === v.surah_id && p.verse_num_2 === v.verse_number)
+      );
+
+      const card = document.createElement('article');
+      card.className = `gtaf-ayah-card ${isPlayingThis ? 'active-playing' : ''}`;
+      card.id = `gtaf-ayah-${v.surah_id}-${v.verse_number}`;
+
+      // Bangun Konten Kata Demi Kata (WBW) atau Baris Uthmani Utuh
+      let arabicBodyHtml = '';
+      if (state.gtaf.showWbw && v.words && v.words.length > 0) {
+        const wbwBoxes = v.words.map((w, idx) => {
+          const wPos = w.position || w.word_position || (idx + 1);
+          const wKey = `${verseKey}:${wPos}`;
+          const isBlurred = state.gtaf.blurHifz && !state.gtaf.revealedWordKeys.has(wKey);
+          const translitHtml = state.gtaf.showTranslit && w.transliteration
+            ? `<span class="gtaf-wbw-tr">${w.transliteration}</span>`
+            : '';
+          const meaningHtml = `<span class="gtaf-wbw-id">${w.translation_id || '-'}</span>`;
+          return `
+            <div class="gtaf-wbw-box" data-wkey="${wKey}" data-pos="${wPos}" title="Klik untuk memutar audio ayat / membuka lafal">
+              <span class="gtaf-wbw-ar ${isBlurred ? 'gtaf-blur-hidden' : ''}">${w.text_uthmani}</span>
+              ${translitHtml}
+              ${meaningHtml}
+            </div>
+          `;
+        }).join('');
+
+        arabicBodyHtml = `
+          <div class="gtaf-wbw-flow">
+            ${wbwBoxes}
+            <span class="gtaf-wbw-end-marker">۝${toArabicDigits(v.verse_number)}</span>
+          </div>
+        `;
+      } else {
+        const isBlurred = state.gtaf.blurHifz && !state.gtaf.revealedWordKeys.has(verseKey);
+        arabicBodyHtml = `
+          <div class="gtaf-pure-arabic-line ${isBlurred ? 'gtaf-blur-hidden' : ''}" data-vkey="${verseKey}" title="Klik untuk membuka lafal / memutar audio">
+            ${v.text_uthmani} <span class="ayah-end-marker">۝${toArabicDigits(v.verse_number)}</span>
+          </div>
+        `;
+      }
+
+      const translationHtml = state.gtaf.showTranslation
+        ? `
+          <div class="gtaf-ayah-translation-box">
+            <span class="gtaf-translation-label">Terjemah Kemenag RI</span>
+            <div>${v.translation_id}</div>
+          </div>
+        `
+        : '';
+
+      let twinHtml = '';
+      if (twinPair) {
+        const isSide1 = twinPair.surah_id_1 === v.surah_id && twinPair.verse_num_1 === v.verse_number;
+        const twinSurahId = isSide1 ? twinPair.surah_id_2 : twinPair.surah_id_1;
+        const twinSurahName = isSide1 ? twinPair.surah_name_2 : twinPair.surah_name_1;
+        const twinVerseNum = isSide1 ? twinPair.verse_num_2 : twinPair.verse_num_1;
+        const twinText = isSide1 ? twinPair.text_2 : twinPair.text_1;
+        twinHtml = `
+          <div class="gtaf-ayah-twin-alert">
+            <div>
+              <strong>✦ Ayat Mutasyabihat:</strong> Mirip dengan <strong>QS. ${twinSurahName} : Ayat ${twinVerseNum}</strong>
+              <span dir="rtl" style="font-family:var(--font-arabic); font-size:1.05rem; margin-left:6px;">(${twinText})</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-xs btn-gtaf-jump-twin" data-tsurah="${twinSurahId}" data-tverse="${twinVerseNum}">
+              Lihat Kembaran
+            </button>
+          </div>
+        `;
+      }
+
+      const tafsirHtml = isTafsirOpen
+        ? `
+          <div class="gtaf-ayah-tafsir-box">
+            <strong>📖 Tafsir Wajiz Kemenag RI • QS. ${surah.name_latin} : Ayat ${v.verse_number}</strong>
+            <div>${v.tafsir_wajiz || v.translation_id}</div>
+          </div>
+        `
+        : '';
+
+      card.innerHTML = `
+        <div class="gtaf-ayah-rail">
+          <div>
+            <span class="gtaf-ayah-key-badge">${v.surah_id} : ${v.verse_number}</span>
+            <div class="gtaf-ayah-subbadge" style="margin-top:4px;">Hal ${v.page_number} • Juz ${v.juz_number}</div>
+          </div>
+          <div class="gtaf-ayah-actions-grid">
+            <button type="button" class="gtaf-icon-btn btn-gtaf-play ${isPlayingThis ? 'active' : ''}" title="${isPlayingThis ? 'Jeda Audio Ayat' : 'Putar Audio Ayat'}" aria-label="Putar Audio Ayat ${v.verse_number}">
+              ${isPlayingThis ? '⏸' : '▶'}
+            </button>
+            <button type="button" class="gtaf-icon-btn btn-gtaf-pin ${isBookmarked ? 'bookmarked' : ''}" title="${isBookmarked ? 'Hapus dari Pin Ayat' : 'Simpan ke Pin Ayat'}" aria-label="Pin Ayat ${v.verse_number}">
+              🔖
+            </button>
+            <button type="button" class="gtaf-icon-btn btn-gtaf-lastread" title="Tandai sebagai Terakhir Dibaca" aria-label="Tandai Terakhir Dibaca">
+              📌
+            </button>
+            <button type="button" class="gtaf-icon-btn btn-gtaf-tafsir ${isTafsirOpen ? 'active' : ''}" title="Tampilkan / Sembunyikan Tafsir Wajiz" aria-label="Tafsir Ayat ${v.verse_number}">
+              📖
+            </button>
+            <button type="button" class="gtaf-icon-btn btn-gtaf-copy" title="Salin Ayat & Terjemahan" aria-label="Salin Ayat ${v.verse_number}">
+              📋
+            </button>
+          </div>
+        </div>
+
+        <div class="gtaf-ayah-content">
+          ${arabicBodyHtml}
+          ${translationHtml}
+          ${twinHtml}
+          ${tafsirHtml}
+        </div>
+      `;
+
+      // Event Listeners pada Kartu Ayat
+      const btnPlay = card.querySelector('.btn-gtaf-play');
+      if (btnPlay) {
+        btnPlay.addEventListener('click', () => {
+          if (state.gtaf.playingSurahId === v.surah_id &&
+              state.gtaf.playingVerseNumber === v.verse_number &&
+              DOM.globalAudio && !DOM.globalAudio.paused) {
+            DOM.globalAudio.pause();
+            updateStickyAudioBarUI(false);
+            renderGtafReaderView();
+          } else {
+            selectActiveVerse(v, 0);
+            setGtafLastRead(v);
+            playMurattalAudio(v.surah_id, v.verse_number);
+          }
+        });
+      }
+
+      const btnPin = card.querySelector('.btn-gtaf-pin');
+      if (btnPin) {
+        btnPin.addEventListener('click', () => {
+          const existingIdx = state.gtaf.bookmarks.findIndex(b => b.key === verseKey);
+          if (existingIdx >= 0) {
+            state.gtaf.bookmarks.splice(existingIdx, 1);
+          } else {
+            state.gtaf.bookmarks.unshift({
+              key: verseKey,
+              surahId: v.surah_id,
+              surahName: surah.name_latin,
+              verseNumber: v.verse_number,
+              pageNumber: v.page_number,
+              juzNumber: v.juz_number
+            });
+          }
+          saveGtafBookmarks();
+          renderGtafSidebar();
+          renderGtafReaderView();
+        });
+      }
+
+      const btnLastRead = card.querySelector('.btn-gtaf-lastread');
+      if (btnLastRead) {
+        btnLastRead.addEventListener('click', () => {
+          setGtafLastRead(v);
+          btnLastRead.textContent = '✓';
+          setTimeout(() => { btnLastRead.textContent = '📌'; }, 1200);
+        });
+      }
+
+      const btnTafsir = card.querySelector('.btn-gtaf-tafsir');
+      if (btnTafsir) {
+        btnTafsir.addEventListener('click', () => {
+          if (state.gtaf.expandedTafsirKeys.has(verseKey)) {
+            state.gtaf.expandedTafsirKeys.delete(verseKey);
+          } else {
+            state.gtaf.expandedTafsirKeys.add(verseKey);
+          }
+          renderGtafReaderView();
+        });
+      }
+
+      const btnCopy = card.querySelector('.btn-gtaf-copy');
+      if (btnCopy) {
+        btnCopy.addEventListener('click', () => {
+          const copyStr = `${v.text_uthmani}\n"${v.translation_id}" (QS. ${surah.name_latin}: ${v.verse_number})`;
+          navigator.clipboard.writeText(copyStr).then(() => {
+            btnCopy.textContent = '✓';
+            setTimeout(() => { btnCopy.textContent = '📋'; }, 1200);
+          });
+        });
+      }
+
+      const btnJumpTwin = card.querySelector('.btn-gtaf-jump-twin');
+      if (btnJumpTwin) {
+        btnJumpTwin.addEventListener('click', () => {
+          const ts = parseInt(btnJumpTwin.dataset.tsurah, 10);
+          const tv = parseInt(btnJumpTwin.dataset.tverse, 10);
+          jumpToSurahAndVerse(ts, tv, true);
+        });
+      }
+
+      card.querySelectorAll('.gtaf-wbw-box').forEach(box => {
+        box.addEventListener('click', () => {
+          const wKey = box.dataset.wkey;
+          const pos = parseInt(box.dataset.pos, 10) || 1;
+          if (state.gtaf.blurHifz && !state.gtaf.revealedWordKeys.has(wKey)) {
+            state.gtaf.revealedWordKeys.add(wKey);
+            const arSpan = box.querySelector('.gtaf-wbw-ar');
+            if (arSpan) arSpan.classList.remove('gtaf-blur-hidden');
+          } else {
+            selectActiveVerse(v, pos);
+            playMurattalAudio(v.surah_id, v.verse_number);
+          }
+        });
+      });
+
+      const pureLine = card.querySelector('.gtaf-pure-arabic-line');
+      if (pureLine) {
+        pureLine.addEventListener('click', () => {
+          if (state.gtaf.blurHifz && !state.gtaf.revealedWordKeys.has(verseKey)) {
+            state.gtaf.revealedWordKeys.add(verseKey);
+            pureLine.classList.remove('gtaf-blur-hidden');
+          } else {
+            selectActiveVerse(v, 0);
+            playMurattalAudio(v.surah_id, v.verse_number);
+          }
+        });
+      }
+
+      DOM.gtafVersesList.appendChild(card);
+    });
   }
 
   function selectActiveVerse(verse, wordPosition = 0) {
@@ -1076,7 +1723,34 @@
     return `https://everyayah.com/data/${state.reciter}/${s}${v}.mp3`;
   }
 
+  const RECITER_NAMES = {
+    Husary_128kbps: 'Syaikh Mahmoud Khalil Al-Husary',
+    Alafasy_128kbps: 'Syaikh Mishary Rashid Alafasy',
+    Minshawy_Murattal_128kbps: 'Syaikh Muhammad Siddiq Al-Minshawi',
+    Abdul_Basit_Murattal_192kbps: 'Syaikh Abdul Basit Abdus Samad'
+  };
+
+  function updateStickyAudioBarUI(isPlaying) {
+    if (!DOM.gtafStickyAudioBar) return;
+    if (state.gtaf.playingSurahId && state.gtaf.playingVerseNumber) {
+      DOM.gtafStickyAudioBar.classList.remove('hidden');
+      const sObj = state.data.surahs.find(s => s.id === state.gtaf.playingSurahId);
+      const sName = sObj ? sObj.name_latin : `Surah ${state.gtaf.playingSurahId}`;
+      if (DOM.gtafAudioTitle) {
+        DOM.gtafAudioTitle.textContent = `QS. ${sName} : Ayat ${state.gtaf.playingVerseNumber}`;
+      }
+      if (DOM.gtafAudioSubtitle) {
+        DOM.gtafAudioSubtitle.textContent = RECITER_NAMES[state.reciter] || state.reciter;
+      }
+      if (DOM.btnGtafAudioPlay) {
+        DOM.btnGtafAudioPlay.textContent = isPlaying ? '⏸ Jeda' : '▶ Putar';
+      }
+    }
+  }
+
   function playMurattalAudio(surahId, verseNumber) {
+    state.gtaf.playingSurahId = surahId;
+    state.gtaf.playingVerseNumber = verseNumber;
     const url = getAudioUrl(surahId, verseNumber);
     DOM.globalAudio.src = url;
     DOM.globalAudio.play().catch(e => console.warn('Audio play hindered:', e));
@@ -1088,6 +1762,14 @@
       </svg>
       <span>Jeda Audio</span>
     `;
+
+    updateStickyAudioBarUI(true);
+    renderGtafReaderView();
+
+    const activeCard = document.getElementById(`gtaf-ayah-${surahId}-${verseNumber}`);
+    if (activeCard && state.gtaf.viewMode === 'verse') {
+      activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
     DOM.globalAudio.onended = () => {
       DOM.btnPlayVerse.innerHTML = `
@@ -1101,6 +1783,20 @@
         DOM.globalAudio.play();
       } else {
         state.currentRepeat = 0;
+        if (state.gtaf.autoNextAudio) {
+          const surahVerses = state.data.verses.filter(v => v.surah_id === surahId);
+          if (verseNumber < surahVerses.length) {
+            const nextV = surahVerses.find(v => v.verse_number === verseNumber + 1);
+            if (nextV) {
+              selectActiveVerse(nextV, 0);
+              setGtafLastRead(nextV);
+              playMurattalAudio(surahId, verseNumber + 1);
+              return;
+            }
+          }
+        }
+        updateStickyAudioBarUI(false);
+        renderGtafReaderView();
       }
     };
   }
@@ -1114,13 +1810,12 @@
         </svg>
         <span>Putar Audio</span>
       `;
+      updateStickyAudioBarUI(false);
+      renderGtafReaderView();
     } else {
-      const currentVerse = state.data.verses.find(
-        v => v.surah_id === state.activeSurahId && v.verse_number === state.activeVerseIndex + 1
-      );
-      if (currentVerse) {
-        playMurattalAudio(currentVerse.surah_id, currentVerse.verse_number);
-      }
+      const targetS = state.gtaf.playingSurahId || state.activeSurahId;
+      const targetV = state.gtaf.playingVerseNumber || (state.activeVerseIndex + 1);
+      playMurattalAudio(targetS, targetV);
     }
   }
 
@@ -2197,6 +2892,244 @@
         renderRadarMutasyabihat();
       });
     });
+
+    // GTAF Basic Qur'an Reader Listeners
+    function toggleGtafSidebar(forceState) {
+      state.gtaf.sidebarOpen = typeof forceState === 'boolean' ? forceState : !state.gtaf.sidebarOpen;
+      if (DOM.gtafLayoutContainer) {
+        DOM.gtafLayoutContainer.classList.toggle('sidebar-collapsed', !state.gtaf.sidebarOpen);
+      }
+    }
+
+    if (DOM.btnGtafToggleSidebar) {
+      DOM.btnGtafToggleSidebar.addEventListener('click', () => toggleGtafSidebar());
+    }
+    if (DOM.btnGtafCloseSidebar) {
+      DOM.btnGtafCloseSidebar.addEventListener('click', () => toggleGtafSidebar(false));
+    }
+
+    if (DOM.gtafIdxTabs && DOM.gtafIdxTabs.length) {
+      DOM.gtafIdxTabs.forEach(tabBtn => {
+        tabBtn.addEventListener('click', () => {
+          DOM.gtafIdxTabs.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          tabBtn.classList.add('active');
+          tabBtn.setAttribute('aria-selected', 'true');
+          state.gtaf.idxTab = tabBtn.dataset.idxTab || 'surah';
+          renderGtafSidebar();
+        });
+      });
+    }
+
+    if (DOM.gtafSidebarSearch) {
+      DOM.gtafSidebarSearch.addEventListener('input', (e) => {
+        state.gtaf.idxSearch = e.target.value;
+        renderGtafSidebar();
+      });
+    }
+
+    if (DOM.btnGtafResumeRead) {
+      DOM.btnGtafResumeRead.addEventListener('click', () => {
+        if (state.gtaf.lastRead) {
+          jumpToSurahAndVerse(state.gtaf.lastRead.surahId, state.gtaf.lastRead.verseNumber, true);
+        }
+      });
+    }
+
+    if (DOM.gtafSurahSelect) {
+      DOM.gtafSurahSelect.addEventListener('change', (e) => {
+        jumpToSurahAndVerse(parseInt(e.target.value, 10), 1, false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    if (DOM.gtafVerseSelect) {
+      DOM.gtafVerseSelect.addEventListener('change', (e) => {
+        const vNum = parseInt(e.target.value, 10) || 1;
+        jumpToSurahAndVerse(state.activeSurahId, vNum, true);
+      });
+    }
+
+    if (DOM.btnGtafModeVerse && DOM.btnGtafModeMushaf) {
+      DOM.btnGtafModeVerse.addEventListener('click', () => {
+        state.gtaf.viewMode = 'verse';
+        DOM.btnGtafModeVerse.classList.add('active');
+        DOM.btnGtafModeMushaf.classList.remove('active');
+        if (DOM.gtafVerseReaderView) DOM.gtafVerseReaderView.classList.remove('hidden');
+        if (DOM.gtafMushafSheetView) DOM.gtafMushafSheetView.classList.add('hidden');
+      });
+
+      DOM.btnGtafModeMushaf.addEventListener('click', () => {
+        state.gtaf.viewMode = 'mushaf';
+        DOM.btnGtafModeMushaf.classList.add('active');
+        DOM.btnGtafModeVerse.classList.remove('active');
+        if (DOM.gtafMushafSheetView) DOM.gtafMushafSheetView.classList.remove('hidden');
+        if (DOM.gtafVerseReaderView) DOM.gtafVerseReaderView.classList.add('hidden');
+      });
+    }
+
+    if (DOM.btnGtafToggleVoicePanel && DOM.gtafVoicePanel) {
+      DOM.btnGtafToggleVoicePanel.addEventListener('click', () => {
+        state.gtaf.showVoicePanel = !state.gtaf.showVoicePanel;
+        DOM.btnGtafToggleVoicePanel.classList.toggle('active', state.gtaf.showVoicePanel);
+        DOM.gtafVoicePanel.classList.toggle('hidden', !state.gtaf.showVoicePanel);
+      });
+    }
+
+    if (DOM.btnGtafOptWbw) {
+      DOM.btnGtafOptWbw.addEventListener('click', () => {
+        state.gtaf.showWbw = !state.gtaf.showWbw;
+        DOM.btnGtafOptWbw.classList.toggle('active', state.gtaf.showWbw);
+        DOM.btnGtafOptWbw.setAttribute('aria-pressed', String(state.gtaf.showWbw));
+        renderGtafReaderView();
+      });
+    }
+
+    if (DOM.btnGtafOptTranslit) {
+      DOM.btnGtafOptTranslit.addEventListener('click', () => {
+        state.gtaf.showTranslit = !state.gtaf.showTranslit;
+        DOM.btnGtafOptTranslit.classList.toggle('active', state.gtaf.showTranslit);
+        DOM.btnGtafOptTranslit.setAttribute('aria-pressed', String(state.gtaf.showTranslit));
+        renderGtafReaderView();
+      });
+    }
+
+    if (DOM.btnGtafOptTranslation) {
+      DOM.btnGtafOptTranslation.addEventListener('click', () => {
+        state.gtaf.showTranslation = !state.gtaf.showTranslation;
+        DOM.btnGtafOptTranslation.classList.toggle('active', state.gtaf.showTranslation);
+        DOM.btnGtafOptTranslation.setAttribute('aria-pressed', String(state.gtaf.showTranslation));
+        renderGtafReaderView();
+      });
+    }
+
+    if (DOM.btnGtafOptTafsir) {
+      DOM.btnGtafOptTafsir.addEventListener('click', () => {
+        state.gtaf.showTafsirAll = !state.gtaf.showTafsirAll;
+        DOM.btnGtafOptTafsir.classList.toggle('active', state.gtaf.showTafsirAll);
+        DOM.btnGtafOptTafsir.setAttribute('aria-pressed', String(state.gtaf.showTafsirAll));
+        renderGtafReaderView();
+      });
+    }
+
+    if (DOM.btnGtafOptBlur) {
+      DOM.btnGtafOptBlur.addEventListener('click', () => {
+        state.gtaf.blurHifz = !state.gtaf.blurHifz;
+        state.gtaf.revealedWordKeys.clear();
+        DOM.btnGtafOptBlur.classList.toggle('active', state.gtaf.blurHifz);
+        DOM.btnGtafOptBlur.setAttribute('aria-pressed', String(state.gtaf.blurHifz));
+        renderGtafReaderView();
+      });
+    }
+
+    function applyGtafArabicScale(newScale) {
+      state.gtaf.arabicScale = Math.min(1.65, Math.max(0.75, newScale));
+      document.documentElement.style.setProperty('--gtaf-ar-scale', String(state.gtaf.arabicScale));
+      if (DOM.btnGtafFontReset) {
+        DOM.btnGtafFontReset.textContent = `${Math.round(state.gtaf.arabicScale * 100)}%`;
+      }
+    }
+
+    if (DOM.btnGtafFontDec) {
+      DOM.btnGtafFontDec.addEventListener('click', () => applyGtafArabicScale(state.gtaf.arabicScale - 0.1));
+    }
+    if (DOM.btnGtafFontReset) {
+      DOM.btnGtafFontReset.addEventListener('click', () => applyGtafArabicScale(1.0));
+    }
+    if (DOM.btnGtafFontInc) {
+      DOM.btnGtafFontInc.addEventListener('click', () => applyGtafArabicScale(state.gtaf.arabicScale + 0.1));
+    }
+
+    if (DOM.btnGtafPlaySurah) {
+      DOM.btnGtafPlaySurah.addEventListener('click', () => {
+        playMurattalAudio(state.activeSurahId, 1);
+      });
+    }
+
+    if (DOM.btnGtafPrevSurah) {
+      DOM.btnGtafPrevSurah.addEventListener('click', () => {
+        stepSurah(-1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+    if (DOM.btnGtafNextSurah) {
+      DOM.btnGtafNextSurah.addEventListener('click', () => {
+        stepSurah(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+    if (DOM.btnGtafScrollTop) {
+      DOM.btnGtafScrollTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    // Sticky Audio Bar Listeners
+    if (DOM.btnGtafAudioPlay) {
+      DOM.btnGtafAudioPlay.addEventListener('click', togglePlayCurrentVerse);
+    }
+    if (DOM.btnGtafAudioPrev) {
+      DOM.btnGtafAudioPrev.addEventListener('click', () => {
+        const sId = state.gtaf.playingSurahId || state.activeSurahId;
+        const vNum = state.gtaf.playingVerseNumber || 1;
+        if (vNum > 1) {
+          playMurattalAudio(sId, vNum - 1);
+        }
+      });
+    }
+    if (DOM.btnGtafAudioNext) {
+      DOM.btnGtafAudioNext.addEventListener('click', () => {
+        const sId = state.gtaf.playingSurahId || state.activeSurahId;
+        const vNum = state.gtaf.playingVerseNumber || 1;
+        const verses = state.data.verses.filter(v => v.surah_id === sId);
+        if (vNum < verses.length) {
+          playMurattalAudio(sId, vNum + 1);
+        }
+      });
+    }
+    if (DOM.gtafAudioReciter) {
+      DOM.gtafAudioReciter.addEventListener('change', (e) => {
+        state.reciter = e.target.value;
+        if (DOM.reciterSelect) DOM.reciterSelect.value = state.reciter;
+        if (state.gtaf.playingSurahId && state.gtaf.playingVerseNumber && !DOM.globalAudio.paused) {
+          playMurattalAudio(state.gtaf.playingSurahId, state.gtaf.playingVerseNumber);
+        } else {
+          updateStickyAudioBarUI(false);
+        }
+      });
+    }
+    if (DOM.btnGtafAudioAutonext) {
+      DOM.btnGtafAudioAutonext.addEventListener('click', () => {
+        state.gtaf.autoNextAudio = !state.gtaf.autoNextAudio;
+        DOM.btnGtafAudioAutonext.classList.toggle('active', state.gtaf.autoNextAudio);
+        DOM.btnGtafAudioAutonext.setAttribute('aria-pressed', String(state.gtaf.autoNextAudio));
+        DOM.btnGtafAudioAutonext.textContent = state.gtaf.autoNextAudio
+          ? 'Lanjut Otomatis: ON'
+          : 'Lanjut Otomatis: OFF';
+      });
+    }
+    if (DOM.btnGtafAudioLoop) {
+      DOM.btnGtafAudioLoop.addEventListener('click', () => {
+        const counts = [1, 3, 5];
+        const nextIdx = (counts.indexOf(state.repeatCount) + 1) % counts.length;
+        state.repeatCount = counts[nextIdx];
+        DOM.btnGtafAudioLoop.textContent = `Ulangi ${state.repeatCount}x`;
+        if (DOM.btnLoopVerse) {
+          DOM.btnLoopVerse.querySelector('span').textContent = `Ulangi ${state.repeatCount}x`;
+        }
+      });
+    }
+    if (DOM.btnGtafAudioClose) {
+      DOM.btnGtafAudioClose.addEventListener('click', () => {
+        if (DOM.globalAudio) DOM.globalAudio.pause();
+        state.gtaf.playingSurahId = null;
+        state.gtaf.playingVerseNumber = null;
+        if (DOM.gtafStickyAudioBar) DOM.gtafStickyAudioBar.classList.add('hidden');
+        renderGtafReaderView();
+      });
+    }
 
     // Drill Mode Answers
     DOM.drillOptA.addEventListener('click', () => handleDrillAnswer(true));

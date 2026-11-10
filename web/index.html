@@ -82,7 +82,7 @@
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
         </svg>
-        <span>Mushaf 15 Baris</span>
+        <span>Al-Qur'an (GTAF)</span>
       </button>
       <button class="tab-btn" data-tab="marked-mushaf" id="tab-marked-mushaf-btn">
         <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -119,154 +119,307 @@
 
   <!-- Area Konten Utama -->
   <main class="main-content">
-    <!-- SEKSI 1: MUSHAF 15 BARIS & SIMAK SUARA -->
+    <!-- SEKSI 1: AL-QUR'AN DASAR MODEL GTAF (AYAT PER KATA, TERJEMAH, TAFSIR, & MUSHAF) -->
     <section id="section-mushaf" class="tab-section active">
-      <div class="mushaf-wrapper">
-        <!-- Panel Simak Suara & Kontrol Audio -->
-        <div class="voice-hifz-panel">
-          <div class="voice-status-group">
-            <button id="btn-toggle-mic" class="btn-mic" aria-label="Mulai Menyimak Suara">
-              <svg class="mic-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="8" y1="23" x2="16" y2="23"></line>
+      <div class="gtaf-layout-container" id="gtaf-layout-container">
+        <!-- SIDEBAR KIRI ALA QURAN.GTAF.ORG (INDEKS SURAH, JUZ, HALAMAN, & PENANDA AYAT) -->
+        <aside class="gtaf-sidebar" id="gtaf-sidebar" aria-label="Indeks Navigasi Al-Qur'an">
+          <div class="gtaf-sidebar-header">
+            <div class="gtaf-sidebar-title-row">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
               </svg>
-            </button>
-            <div class="voice-info">
-              <div class="voice-title-row">
-                <span class="status-indicator" id="voice-indicator-dot"></span>
-                <span id="voice-indicator" class="voice-status-text">Siap menyimak bacaan hafalan</span>
-              </div>
-              <div class="transcript-display" id="transcript-display">
-                Tekan tombol mikrofon untuk menyimak otomatis, atau tekan <kbd>Spasi</kbd> untuk membuka kata demi kata.
-              </div>
+              <strong>Indeks Al-Qur'an</strong>
             </div>
+            <button type="button" id="btn-gtaf-close-sidebar" class="btn-close" aria-label="Tutup Indeks" title="Sembunyikan Panel Indeks">✕</button>
           </div>
 
-          <!-- Alert Kotak Deteksi Lompat Surah -->
-          <div id="trap-alert-box" class="trap-alert-box hidden" role="alert">
-            <div class="alert-symbol" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </div>
-            <div class="alert-content">
-              <strong id="alert-title">Peringatan: Potensi Lompat Surah</strong>
-              <p id="alert-desc">Lidah Anda membaca lafal yang identik dengan ayat di surah lain.</p>
-              <div class="alert-action-row">
-                <button id="btn-play-correction" class="btn btn-sm btn-primary">Dengarkan Koreksi Otomatis</button>
-                <button id="btn-dismiss-alert" class="btn btn-sm btn-ghost">Tutup</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Murattal Bar -->
-          <div class="murattal-bar">
-            <div class="reciter-picker">
-              <label for="reciter-select" class="sr-only">Pilih Qari</label>
-              <select id="reciter-select" class="select-dropdown sm" aria-label="Pilih Qari Murattal">
-                <option value="Husary_128kbps">Syaikh Al-Husary (Tartil Standar)</option>
-                <option value="Alafasy_128kbps">Syaikh Mishary Rashid Alafasy</option>
-                <option value="Minshawy_Murattal_128kbps">Syaikh Muhammad Siddiq Al-Minshawi</option>
-                <option value="Abdul_Basit_Murattal_192kbps">Syaikh Abdul Basit Abdus Samad</option>
-              </select>
-            </div>
-
-            <div class="playback-controls">
-              <button id="btn-play-verse" class="btn btn-primary btn-sm" title="Putar Ayat Ini">
-                <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                <span>Putar Audio</span>
-              </button>
-              <button id="btn-loop-verse" class="btn btn-secondary btn-sm" title="Ulangi Ayat Ini">
-                <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="17 1 21 5 17 9"></polyline>
-                  <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                  <polyline points="7 23 3 19 7 15"></polyline>
-                  <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-                </svg>
-                <span>Ulangi 1x</span>
-              </button>
-            </div>
-
-            <div class="peek-hint">
-              <span>Navigasi: <kbd>Spasi</kbd> untuk intip kata berikutnya</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Toolbar Zoom In / Zoom Out & Mode Selembar Mushaf Madinah -->
-        <div class="mushaf-zoom-toolbar">
-          <div class="zoom-label-group">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-            </svg>
-            <span>Tampilan Lembar Mushaf Madinah (Cubit 2 Jari / Ctrl+Scroll)</span>
-          </div>
-          <div class="zoom-controls-group">
-            <button type="button" id="btn-toggle-single-sheet" class="btn btn-secondary btn-xs active" title="Tampilkan proporsional 1 lembar utuh seperti cetakan Mushaf Madinah">Selembar Mushaf</button>
-            <button type="button" id="btn-toggle-scroll-zoom" class="btn btn-secondary btn-xs" title="Klik agar Scroll Mouse langsung memperbesar/memperkecil Mushaf tanpa tombol Ctrl">Ctrl+Scroll = Zoom</button>
-            <button type="button" id="btn-zoom-out" class="btn btn-ghost btn-xs" aria-label="Perkecil Mushaf (Zoom Out)" title="Perkecil Mushaf">−</button>
-            <button type="button" id="btn-zoom-reset" class="zoom-pct-badge" title="Klik untuk kembali ke 100%">100%</button>
-            <button type="button" id="btn-zoom-in" class="btn btn-ghost btn-xs" aria-label="Perbesar Mushaf (Zoom In)" title="Perbesar Mushaf">+</button>
-          </div>
-        </div>
-
-        <!-- Lembaran Mushaf Madinah 15 Baris -->
-        <article class="mushaf-page-card single-sheet-mode" id="mushaf-page-container">
-          <!-- Bingkai Ornamen Luar & Header Halaman -->
-          <header class="mushaf-page-header">
-            <span class="juz-label" id="mushaf-juz-label">الجزء ٣٠</span>
-            <span class="surah-label" id="mushaf-surah-label">سُورَةُ النَّبَإِ</span>
-            <span class="page-label" id="mushaf-page-label">٥٨٢</span>
-          </header>
-
-          <!-- 15 Baris Mushaf -->
-          <div class="mushaf-15lines-grid" id="mushaf-lines-container">
-            <!-- Disusun secara proporsional oleh layout engine -->
-          </div>
-
-          <!-- Footer Halaman & Navigasi -->
-          <footer class="mushaf-page-footer">
-            <div class="page-nav-row">
-              <button id="btn-prev-page" class="btn btn-ghost btn-sm" aria-label="Halaman Sebelumnya">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                <span>Sebelumnya</span>
-              </button>
-              <span id="page-indicator">Halaman 582</span>
-              <button id="btn-next-page" class="btn btn-ghost btn-sm" aria-label="Halaman Selanjutnya">
-                <span>Selanjutnya</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
-            </div>
-          </footer>
-        </article>
-
-        <!-- Tafsir & Terjemahan Ayat Aktif -->
-        <div class="verse-detail-card" id="verse-detail-card">
-          <div class="verse-detail-header">
-            <span class="verse-badge-active" id="detail-verse-badge">QS. An-Naba' : Ayat 1</span>
-            <button id="btn-copy-verse" class="btn btn-ghost btn-xs" title="Salin Ayat & Terjemah">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span>Salin</span>
+          <!-- Tab Pilihan Indeks: Surah | Juz | Hal | Pin -->
+          <div class="gtaf-idx-tabs" role="tablist" aria-label="Kategori Indeks">
+            <button type="button" class="gtaf-idx-tab active" data-idx-tab="surah" role="tab" aria-selected="true">Surah</button>
+            <button type="button" class="gtaf-idx-tab" data-idx-tab="juz" role="tab" aria-selected="false">Juz</button>
+            <button type="button" class="gtaf-idx-tab" data-idx-tab="page" role="tab" aria-selected="false">Halaman</button>
+            <button type="button" class="gtaf-idx-tab" data-idx-tab="bookmarks" role="tab" aria-selected="false">
+              <span>Pin</span>
+              <span class="gtaf-pin-count" id="gtaf-pin-count">0</span>
             </button>
           </div>
-          <p class="verse-arabic-display" id="detail-arabic" dir="rtl"></p>
-          <p class="verse-translation-display" id="detail-translation"></p>
-          <div class="word-by-word-container" id="detail-words-list">
-            <!-- Kosakata Perkata -->
+
+          <!-- Kotak Pencarian Cepat Surah / Juz / Halaman -->
+          <div class="gtaf-sidebar-search-box">
+            <input type="text" id="gtaf-sidebar-search" class="search-input" placeholder="Cari surah, nomor (1-114), juz, atau hal..." aria-label="Cari di indeks Al-Qur'an">
+          </div>
+
+          <!-- Kartu Terakhir Dibaca (Last Read) -->
+          <div class="gtaf-last-read-banner hidden" id="gtaf-last-read-banner">
+            <div class="gtaf-last-read-info">
+              <span class="gtaf-last-read-tag">Terakhir Dibaca</span>
+              <strong id="gtaf-last-read-text">QS. An-Naba' : Ayat 1</strong>
+            </div>
+            <button type="button" id="btn-gtaf-resume-read" class="btn btn-primary btn-xs">Buka</button>
+          </div>
+
+          <!-- Daftar Item Indeks (Diisi Dinamis via app.js) -->
+          <div class="gtaf-sidebar-list" id="gtaf-sidebar-list"></div>
+        </aside>
+
+        <!-- KOLOM UTAMA PEMBACA AL-QUR'AN ALA QURAN.GTAF.ORG -->
+        <div class="gtaf-main-column">
+          <!-- Toolbar Atas GTAF: Tombol Indeks, Loncat Surah/Ayat, Mode Tampilan, & Pengaturan -->
+          <div class="gtaf-top-toolbar">
+            <div class="gtaf-toolbar-row-primary">
+              <div class="gtaf-nav-quick-group">
+                <button type="button" id="btn-gtaf-toggle-sidebar" class="btn btn-secondary btn-sm" title="Buka/Tutup Panel Indeks Surah, Juz, & Halaman">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                  </svg>
+                  <span>Indeks</span>
+                </button>
+
+                <label for="gtaf-surah-select" class="sr-only">Pilih Surah</label>
+                <select id="gtaf-surah-select" class="select-dropdown sm" aria-label="Pilih Surah di Pembaca Utama"></select>
+
+                <label for="gtaf-verse-select" class="sr-only">Loncat ke Ayat</label>
+                <select id="gtaf-verse-select" class="select-dropdown sm" aria-label="Loncat ke Ayat"></select>
+              </div>
+
+              <!-- Switcher Mode Baca (Mode Ayat & Per Kata vs Mode Mushaf 15 Baris vs Panel Simak Suara) -->
+              <div class="gtaf-view-switcher" role="group" aria-label="Pilih Mode Baca Al-Qur'an">
+                <button type="button" id="btn-gtaf-mode-verse" class="btn btn-secondary btn-sm active" title="Tampilan Daftar Ayat, Per Kata, Terjemah, & Tafsir seperti quran.gtaf.org">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                  <span>Ayat &amp; Per Kata</span>
+                </button>
+                <button type="button" id="btn-gtaf-mode-mushaf" class="btn btn-secondary btn-sm" title="Tampilan Lembaran Mushaf Standar Madinah 15 Baris">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                  </svg>
+                  <span>Mushaf Madinah</span>
+                </button>
+                <button type="button" id="btn-gtaf-toggle-voice-panel" class="btn btn-secondary btn-sm" title="Tampilkan atau sembunyikan Panel Simak Suara Hafalan">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  </svg>
+                  <span>Simak Suara</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Baris Kustomisasi Tampilan (Per Kata, Transliterasi, Terjemah, Tafsir, Blur Hafalan, & Ukuran Font) -->
+            <div class="gtaf-display-settings">
+              <div class="gtaf-toggles-wrap">
+                <button type="button" id="btn-gtaf-opt-wbw" class="btn btn-secondary btn-xs active" aria-pressed="true" title="Tampilkan terjemahan kata demi kata (Word-by-Word)">Per Kata (WBW)</button>
+                <button type="button" id="btn-gtaf-opt-translit" class="btn btn-secondary btn-xs active" aria-pressed="true" title="Tampilkan transliterasi Latin di bawah tiap kata Arab">Transliterasi</button>
+                <button type="button" id="btn-gtaf-opt-translation" class="btn btn-secondary btn-xs active" aria-pressed="true" title="Tampilkan terjemahan bahasa Indonesia Kemenag RI">Terjemah Ayat</button>
+                <button type="button" id="btn-gtaf-opt-tafsir" class="btn btn-secondary btn-xs" aria-pressed="false" title="Buka otomatis Tafsir Wajiz Kemenag di setiap ayat">Tafsir Wajiz</button>
+                <button type="button" id="btn-gtaf-opt-blur" class="btn btn-secondary btn-xs" aria-pressed="false" title="Samarkan teks Arab untuk menguji ingatan hafalan (sentuh kata untuk membuka)">Uji Hafalan (Blur)</button>
+              </div>
+
+              <div class="gtaf-font-controls">
+                <span class="gtaf-font-label">Font Arab:</span>
+                <button type="button" id="btn-gtaf-font-dec" class="btn btn-ghost btn-xs" aria-label="Perkecil Huruf Arab" title="Perkecil Huruf Arab">A−</button>
+                <button type="button" id="btn-gtaf-font-reset" class="zoom-pct-badge" title="Reset ukuran huruf ke 100%">100%</button>
+                <button type="button" id="btn-gtaf-font-inc" class="btn btn-ghost btn-xs" aria-label="Perbesar Huruf Arab" title="Perbesar Huruf Arab">A+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel Simak Suara & Kontrol Audio (Dapat Dibuka/Tutup) -->
+          <div class="voice-hifz-panel hidden" id="gtaf-voice-panel">
+            <div class="voice-status-group">
+              <button id="btn-toggle-mic" class="btn-mic" aria-label="Mulai Menyimak Suara">
+                <svg class="mic-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+              <div class="voice-info">
+                <div class="voice-title-row">
+                  <span class="status-indicator" id="voice-indicator-dot"></span>
+                  <span id="voice-indicator" class="voice-status-text">Siap menyimak bacaan hafalan</span>
+                </div>
+                <div class="transcript-display" id="transcript-display">
+                  Tekan tombol mikrofon untuk menyimak otomatis, atau tekan <kbd>Spasi</kbd> untuk membuka kata demi kata.
+                </div>
+              </div>
+            </div>
+
+            <!-- Alert Kotak Deteksi Lompat Surah -->
+            <div id="trap-alert-box" class="trap-alert-box hidden" role="alert">
+              <div class="alert-symbol" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+              <div class="alert-content">
+                <strong id="alert-title">Peringatan: Potensi Lompat Surah</strong>
+                <p id="alert-desc">Lidah Anda membaca lafal yang identik dengan ayat di surah lain.</p>
+                <div class="alert-action-row">
+                  <button id="btn-play-correction" class="btn btn-sm btn-primary">Dengarkan Koreksi Otomatis</button>
+                  <button id="btn-dismiss-alert" class="btn btn-sm btn-ghost">Tutup</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Murattal Bar -->
+            <div class="murattal-bar">
+              <div class="reciter-picker">
+                <label for="reciter-select" class="sr-only">Pilih Qari</label>
+                <select id="reciter-select" class="select-dropdown sm" aria-label="Pilih Qari Murattal">
+                  <option value="Husary_128kbps">Syaikh Al-Husary (Tartil Standar)</option>
+                  <option value="Alafasy_128kbps">Syaikh Mishary Rashid Alafasy</option>
+                  <option value="Minshawy_Murattal_128kbps">Syaikh Muhammad Siddiq Al-Minshawi</option>
+                  <option value="Abdul_Basit_Murattal_192kbps">Syaikh Abdul Basit Abdus Samad</option>
+                </select>
+              </div>
+
+              <div class="playback-controls">
+                <button id="btn-play-verse" class="btn btn-primary btn-sm" title="Putar Ayat Ini">
+                  <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  <span>Putar Audio</span>
+                </button>
+                <button id="btn-loop-verse" class="btn btn-secondary btn-sm" title="Ulangi Ayat Ini">
+                  <svg class="btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="17 1 21 5 17 9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7 23 3 19 7 15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                  </svg>
+                  <span>Ulangi 1x</span>
+                </button>
+              </div>
+
+              <div class="peek-hint">
+                <span>Navigasi: <kbd>Spasi</kbd> untuk intip kata berikutnya</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 1: MODE BACA AYAT & PER KATA ALA QURAN.GTAF.ORG (DEFAULT) -->
+          <div id="gtaf-verse-reader-view" class="gtaf-verse-reader-view">
+            <!-- Kartu Banner Kepala Surah -->
+            <div class="gtaf-surah-banner-card" id="gtaf-surah-banner-card">
+              <div class="gtaf-surah-banner-top">
+                <div class="gtaf-surah-meta-left">
+                  <span class="gtaf-surah-num-pill" id="gtaf-banner-num">Surah Ke-78</span>
+                  <h2 class="gtaf-surah-title-latin" id="gtaf-banner-latin">QS. An-Naba' (Berita Besar)</h2>
+                  <p class="gtaf-surah-submeta" id="gtaf-banner-meta">Makkiyah • 40 Ayat • Juz 30 • Halaman 582</p>
+                </div>
+                <div class="gtaf-surah-meta-right">
+                  <div class="gtaf-surah-calligraphy" id="gtaf-banner-arabic" dir="rtl">سُورَةُ النَّبَإِ</div>
+                  <button type="button" id="btn-gtaf-play-surah" class="btn btn-primary btn-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    <span>Putar Murattal Surah</span>
+                  </button>
+                </div>
+              </div>
+              <div class="gtaf-bismillah-row" id="gtaf-bismillah-row" dir="rtl">
+                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+              </div>
+            </div>
+
+            <!-- Daftar Kartu Ayat Demi Ayat (Diisi Dinamis oleh app.js) -->
+            <div class="gtaf-verses-list" id="gtaf-verses-list"></div>
+
+            <!-- Navigasi Bawah Antar Surah -->
+            <div class="gtaf-surah-footer-nav">
+              <button type="button" id="btn-gtaf-prev-surah" class="btn btn-secondary btn-sm">◄ Surah Sebelumnya</button>
+              <button type="button" id="btn-gtaf-scroll-top" class="btn btn-ghost btn-sm">↑ Ke Awal Surah</button>
+              <button type="button" id="btn-gtaf-next-surah" class="btn btn-secondary btn-sm">Surah Selanjutnya ►</button>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 2: MODE LEMBARAN MUSHAF MADINAH 15 BARIS -->
+          <div id="gtaf-mushaf-sheet-view" class="mushaf-wrapper hidden">
+            <!-- Toolbar Zoom In / Zoom Out & Mode Selembar Mushaf Madinah -->
+            <div class="mushaf-zoom-toolbar">
+              <div class="zoom-label-group">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+                <span>Tampilan Lembar Mushaf Madinah (Cubit 2 Jari / Ctrl+Scroll)</span>
+              </div>
+              <div class="zoom-controls-group">
+                <button type="button" id="btn-toggle-single-sheet" class="btn btn-secondary btn-xs active" title="Tampilkan proporsional 1 lembar utuh seperti cetakan Mushaf Madinah">Selembar Mushaf</button>
+                <button type="button" id="btn-toggle-scroll-zoom" class="btn btn-secondary btn-xs" title="Klik agar Scroll Mouse langsung memperbesar/memperkecil Mushaf tanpa tombol Ctrl">Ctrl+Scroll = Zoom</button>
+                <button type="button" id="btn-zoom-out" class="btn btn-ghost btn-xs" aria-label="Perkecil Mushaf (Zoom Out)" title="Perkecil Mushaf">−</button>
+                <button type="button" id="btn-zoom-reset" class="zoom-pct-badge" title="Klik untuk kembali ke 100%">100%</button>
+                <button type="button" id="btn-zoom-in" class="btn btn-ghost btn-xs" aria-label="Perbesar Mushaf (Zoom In)" title="Perbesar Mushaf">+</button>
+              </div>
+            </div>
+
+            <!-- Lembaran Mushaf Madinah 15 Baris -->
+            <article class="mushaf-page-card single-sheet-mode" id="mushaf-page-container">
+              <!-- Bingkai Ornamen Luar & Header Halaman -->
+              <header class="mushaf-page-header">
+                <span class="juz-label" id="mushaf-juz-label">الجزء ٣٠</span>
+                <span class="surah-label" id="mushaf-surah-label">سُورَةُ النَّبَإِ</span>
+                <span class="page-label" id="mushaf-page-label">٥٨٢</span>
+              </header>
+
+              <!-- 15 Baris Mushaf -->
+              <div class="mushaf-15lines-grid" id="mushaf-lines-container">
+                <!-- Disusun secara proporsional oleh layout engine -->
+              </div>
+
+              <!-- Footer Halaman & Navigasi -->
+              <footer class="mushaf-page-footer">
+                <div class="page-nav-row">
+                  <button id="btn-prev-page" class="btn btn-ghost btn-sm" aria-label="Halaman Sebelumnya">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    <span>Sebelumnya</span>
+                  </button>
+                  <span id="page-indicator">Halaman 582</span>
+                  <button id="btn-next-page" class="btn btn-ghost btn-sm" aria-label="Halaman Selanjutnya">
+                    <span>Selanjutnya</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </footer>
+            </article>
+
+            <!-- Tafsir & Terjemahan Ayat Aktif -->
+            <div class="verse-detail-card" id="verse-detail-card">
+              <div class="verse-detail-header">
+                <span class="verse-badge-active" id="detail-verse-badge">QS. An-Naba' : Ayat 1</span>
+                <button id="btn-copy-verse" class="btn btn-ghost btn-xs" title="Salin Ayat & Terjemah">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>Salin</span>
+                </button>
+              </div>
+              <p class="verse-arabic-display" id="detail-arabic" dir="rtl"></p>
+              <p class="verse-translation-display" id="detail-translation"></p>
+              <div class="word-by-word-container" id="detail-words-list">
+                <!-- Kosakata Perkata -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -582,6 +735,39 @@
       </div>
     </section>
   </main>
+
+  <!-- Sticky Bottom Audio Player Bar ala quran.gtaf.org -->
+  <div class="gtaf-sticky-audio-bar hidden" id="gtaf-sticky-audio-bar" role="region" aria-label="Pemutar Audio Murattal Al-Qur'an">
+    <div class="gtaf-audio-bar-inner">
+      <div class="gtaf-audio-now-playing">
+        <span class="gtaf-audio-pulse" id="gtaf-audio-pulse"></span>
+        <div class="gtaf-audio-track-meta">
+          <strong id="gtaf-audio-title">QS. An-Naba' : Ayat 1</strong>
+          <span id="gtaf-audio-subtitle">Syaikh Mahmoud Khalil Al-Husary</span>
+        </div>
+      </div>
+
+      <div class="gtaf-audio-transport">
+        <button type="button" id="btn-gtaf-audio-prev" class="btn btn-ghost btn-xs" aria-label="Ayat Sebelumnya" title="Ayat Sebelumnya">⏮</button>
+        <button type="button" id="btn-gtaf-audio-play" class="btn btn-primary btn-sm" aria-label="Putar atau Jeda Audio" title="Putar / Jeda">▶ Putar</button>
+        <button type="button" id="btn-gtaf-audio-next" class="btn btn-ghost btn-xs" aria-label="Ayat Selanjutnya" title="Ayat Selanjutnya">⏭</button>
+      </div>
+
+      <div class="gtaf-audio-options">
+        <label for="gtaf-audio-reciter" class="sr-only">Pilih Qari</label>
+        <select id="gtaf-audio-reciter" class="select-dropdown sm" aria-label="Pilih Qari di Bar Audio">
+          <option value="Husary_128kbps">Al-Husary (Tartil)</option>
+          <option value="Alafasy_128kbps">Mishary Alafasy</option>
+          <option value="Minshawy_Murattal_128kbps">Al-Minshawi</option>
+          <option value="Abdul_Basit_Murattal_192kbps">Abdul Basit</option>
+        </select>
+
+        <button type="button" id="btn-gtaf-audio-autonext" class="btn btn-secondary btn-xs active" aria-pressed="true" title="Otomatis lanjut ke ayat berikutnya saat selesai">Lanjut Otomatis: ON</button>
+        <button type="button" id="btn-gtaf-audio-loop" class="btn btn-secondary btn-xs" title="Ulangi pemutaran ayat">Ulangi 1x</button>
+        <button type="button" id="btn-gtaf-audio-close" class="btn-close" aria-label="Tutup Pemutar Audio" title="Hentikan &amp; Tutup">✕</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Dialog Modal Edit Memory Anchor -->
   <dialog id="anchor-modal" class="app-modal">

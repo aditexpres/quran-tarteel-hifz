@@ -508,7 +508,7 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
     final goldColor = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
 
     final tabs = [
-      (index: 0, icon: Icons.menu_book_outlined, label: 'Mushaf 15 Baris', badge: null),
+      (index: 0, icon: Icons.menu_book_outlined, label: 'Al-Qur\'an (GTAF)', badge: null),
       (index: 1, icon: Icons.star_outline_rounded, label: 'Mushaf Bertanda', badge: null),
       (index: 2, icon: Icons.mic_none_rounded, label: 'Koreksi Bacaan', badge: null),
       (
@@ -604,6 +604,9 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
         return MushafVoiceHifzView(
           verses: _verses,
           surah: surah,
+          allSurahs: _surahs,
+          mutasyabihatPairs: _mutasyabihatPairs,
+          onSelectSurah: _onSurahChanged,
           voiceController: _voiceController,
           murattalAudioService: _murattalAudioService,
           hideVerseMode: _hideVerseMode,
@@ -804,12 +807,33 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
 }
 
 // =============================================================================
-// 2. TAB 1: MUSHAF 15 BARIS + PANEL VOICE HIFZ + DETAIL AYAT PERKATA (IDENTIK WEB)
+// 2. TAB 1: AL-QUR'AN DASAR MODEL QURAN.GTAF.ORG + MUSHAF 15 BARIS + VOICE HIFZ
 // =============================================================================
 
-class MushafVoiceHifzView extends StatelessWidget {
+class _GtafBookmarkItem {
+  final String key;
+  final int surahId;
+  final String surahName;
+  final int verseNumber;
+  final int pageNumber;
+  final int juzNumber;
+
+  const _GtafBookmarkItem({
+    required this.key,
+    required this.surahId,
+    required this.surahName,
+    required this.verseNumber,
+    required this.pageNumber,
+    required this.juzNumber,
+  });
+}
+
+class MushafVoiceHifzView extends StatefulWidget {
   final List<Verse> verses;
   final Surah? surah;
+  final List<Surah> allSurahs;
+  final List<MutasyabihatComparisonPair> mutasyabihatPairs;
+  final ValueChanged<int>? onSelectSurah;
   final WhisperVoiceHifzController voiceController;
   final QuranMurattalAudioService murattalAudioService;
   final bool hideVerseMode;
@@ -821,6 +845,9 @@ class MushafVoiceHifzView extends StatelessWidget {
     super.key,
     required this.verses,
     this.surah,
+    this.allSurahs = const [],
+    this.mutasyabihatPairs = const [],
+    this.onSelectSurah,
     required this.voiceController,
     required this.murattalAudioService,
     required this.hideVerseMode,
@@ -830,62 +857,1810 @@ class MushafVoiceHifzView extends StatelessWidget {
   });
 
   @override
+  State<MushafVoiceHifzView> createState() => _MushafVoiceHifzViewState();
+}
+
+class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
+  static const List<(int juz, int surahId, String surahName, int verseNum, int pageNum)> _juzIndexCatalog = [
+    (1, 1, 'Al-Fatihah', 1, 1),
+    (2, 2, 'Al-Baqarah', 142, 22),
+    (3, 2, 'Al-Baqarah', 253, 42),
+    (4, 3, 'Ali \'Imran', 93, 62),
+    (5, 4, 'An-Nisa\'', 24, 82),
+    (6, 4, 'An-Nisa\'', 148, 102),
+    (7, 5, 'Al-Ma\'idah', 82, 121),
+    (8, 6, 'Al-An\'am', 111, 142),
+    (9, 7, 'Al-A\'raf', 88, 162),
+    (10, 8, 'Al-Anfal', 41, 182),
+    (11, 9, 'At-Taubah', 93, 201),
+    (12, 11, 'Hud', 6, 222),
+    (13, 12, 'Yusuf', 53, 242),
+    (14, 15, 'Al-Hijr', 1, 262),
+    (15, 17, 'Al-Isra\'', 1, 282),
+    (16, 18, 'Al-Kahf', 75, 302),
+    (17, 21, 'Al-Anbiya\'', 1, 322),
+    (18, 23, 'Al-Mu\'minun', 1, 342),
+    (19, 25, 'Al-Furqan', 21, 362),
+    (20, 27, 'An-Naml', 56, 382),
+    (21, 29, 'Al-\'Ankabut', 46, 402),
+    (22, 33, 'Al-Ahzab', 31, 422),
+    (23, 36, 'Yasin', 28, 442),
+    (24, 39, 'Az-Zumar', 32, 462),
+    (25, 41, 'Fussilat', 47, 482),
+    (26, 46, 'Al-Ahqaf', 1, 502),
+    (27, 51, 'Adz-Dzariyat', 31, 522),
+    (28, 58, 'Al-Mujadilah', 1, 542),
+    (29, 67, 'Al-Mulk', 1, 562),
+    (30, 78, 'An-Naba\'', 1, 582),
+  ];
+
+  bool _isMushafSheetMode = false;
+  bool _sidebarOpen = true;
+  String _idxTab = 'surah'; // 'surah' | 'juz' | 'page' | 'bookmarks'
+  String _idxSearch = '';
+  bool _showVoicePanel = false;
+
+  bool _showWbw = true;
+  bool _showTranslit = true;
+  bool _showTranslation = true;
+  bool _showTafsirAll = false;
+  bool _blurHifz = false;
+  double _arabicScale = 1.0;
+
+  int _selectedJumpVerseNum = 1;
+  final Set<String> _expandedTafsirKeys = <String>{};
+  final Set<String> _revealedWordKeys = <String>{};
+  final List<_GtafBookmarkItem> _bookmarks = <_GtafBookmarkItem>[];
+  _GtafBookmarkItem? _lastRead;
+  final Map<int, GlobalKey> _verseCardKeys = <int, GlobalKey>{};
+
+  void _scrollToVerse(int verseNum) {
+    setState(() {
+      _selectedJumpVerseNum = verseNum;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _verseCardKeys[verseNum];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          alignment: 0.15,
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideDesktop = screenWidth >= 920;
 
     return ListenableBuilder(
-      listenable: Listenable.merge([voiceController, murattalAudioService]),
+      listenable: Listenable.merge([widget.voiceController, widget.murattalAudioService]),
       builder: (context, _) {
-        final state = voiceController.state;
-        final activeVerse = voiceController.currentVerse ??
-            (verses.isNotEmpty ? verses.first : null);
+        final state = widget.voiceController.state;
+        final activeVerse = widget.voiceController.currentVerse ??
+            (widget.verses.isNotEmpty ? widget.verses.first : null);
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1140),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 18,
+                bottom: widget.murattalAudioService.playingSurahId != null ? 96 : 28,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: isWideDesktop && _sidebarOpen
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 300,
+                              child: _buildGtafSidebar(context, isDark),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: _buildGtafMainReaderColumn(
+                                context,
+                                state,
+                                activeVerse,
+                                isDark,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_sidebarOpen) ...[
+                              _buildGtafSidebar(context, isDark),
+                              const SizedBox(height: 16),
+                            ],
+                            _buildGtafMainReaderColumn(
+                              context,
+                              state,
+                              activeVerse,
+                              isDark,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+
+            // Sticky Bottom Audio Bar ala quran.gtaf.org
+            if (widget.murattalAudioService.playingSurahId != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildGtafStickyAudioBar(context, isDark),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGtafSidebar(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final mushafBg = isDark ? const Color(0xFF181D1A) : const Color(0xFFFCFAF6);
+    final subtleBg = isDark ? const Color(0xFF242B27) : const Color(0xFFF1ECE0);
+    final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
+    final borderSubtle = isDark ? const Color(0xFF262D2A) : const Color(0xFFE6E1D6);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final primarySubtle = isDark ? const Color(0xFF132A20) : const Color(0xFFEAF4EE);
+    final goldColor = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
+    final textPrimary = isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F);
+    final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+    final q = _idxSearch.trim().toLowerCase();
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 680),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderCard),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header Sidebar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: mushafBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+              border: Border(bottom: BorderSide(color: borderSubtle)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.menu_book_rounded, size: 17, color: primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Indeks Al-Qur\'an',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Sembunyikan Indeks',
+                  onPressed: () => setState(() => _sidebarOpen = false),
+                  icon: Icon(Icons.close_rounded, size: 18, color: textSecondary),
+                ),
+              ],
+            ),
+          ),
+
+          // 4 Tab Indeks: Surah | Juz | Hal | Pin
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: subtleBg,
+              border: Border(bottom: BorderSide(color: borderSubtle)),
+            ),
+            child: Row(
+              children: [
+                _buildIdxTabBtn('surah', 'Surah', isDark, surfaceColor, primaryColor, textSecondary),
+                _buildIdxTabBtn('juz', 'Juz', isDark, surfaceColor, primaryColor, textSecondary),
+                _buildIdxTabBtn('page', 'Hal', isDark, surfaceColor, primaryColor, textSecondary),
+                _buildIdxTabBtn(
+                  'bookmarks',
+                  'Pin (${_bookmarks.length})',
+                  isDark,
+                  surfaceColor,
+                  primaryColor,
+                  textSecondary,
+                ),
+              ],
+            ),
+          ),
+
+          // Kotak Pencarian Indeks
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+            child: TextField(
+              onChanged: (val) => setState(() => _idxSearch = val),
+              style: TextStyle(fontSize: 12.5, color: textPrimary),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Cari surah, nomor, juz, atau halaman...',
+                hintStyle: TextStyle(fontSize: 12, color: textSecondary),
+                prefixIcon: Icon(Icons.search_rounded, size: 16, color: textSecondary),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: borderCard),
+                ),
+              ),
+            ),
+          ),
+
+          // Banner Terakhir Dibaca
+          if (_lastRead != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: goldColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: goldColor.withOpacity(0.45)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // 1. Panel Simak Suara & Kontrol Audio (Persis .voice-hifz-panel di Web)
-                  _buildWebVoiceHifzPanel(context, state, activeVerse, isDark),
-
-                  const SizedBox(height: 18),
-
-                  // 2. Lembaran Mushaf Madinah 15 Baris (Persis .mushaf-page-card di Web)
-                  Mushaf15LinePageWidget(
-                    verses: verses,
-                    activeVerseId: state.activeVerseId,
-                    revealedWordPosition: state.revealedWordPosition,
-                    hideVerseMode: hideVerseMode,
-                    surahArabicName: surah?.nameArabic,
-                    revelationType: surah?.revelationType,
-                    onPrevPage: onPrevSurahPage,
-                    onNextPage: onNextSurahPage,
-                    onSelectVerse: (verse) => voiceController.setActiveVerse(
-                      verse,
-                      revealAllInitially: !hideVerseMode,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TERAKHIR DIBACA',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: goldColor,
+                          ),
+                        ),
+                        Text(
+                          'QS. ${_lastRead!.surahName} : Ayat ${_lastRead!.verseNumber}',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
-                    onPlayVerseAudio: (verse) => murattalAudioService.playVerse(
-                      surahId: verse.surahId,
-                      verseNumber: verse.verseNumber,
-                      surahName: verse.surahNameLatin,
-                    ),
-                    onShowTafsir: onShowTafsir,
                   ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onPressed: () {
+                      widget.onSelectSurah?.call(_lastRead!.surahId);
+                      _scrollToVerse(_lastRead!.verseNumber);
+                    },
+                    child: const Text('Buka', style: TextStyle(fontSize: 11.5)),
+                  ),
+                ],
+              ),
+            ),
 
-                  const SizedBox(height: 18),
+          // Daftar Item Indeks
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(10),
+              children: _buildSidebarItemsList(
+                q: q,
+                isDark: isDark,
+                surfaceColor: surfaceColor,
+                subtleBg: subtleBg,
+                borderSubtle: borderSubtle,
+                primaryColor: primaryColor,
+                primarySubtle: primarySubtle,
+                goldColor: goldColor,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                  // 3. Kartu Detail Ayat & Terjemahan Perkata (Persis .verse-detail-card di Web)
-                  if (activeVerse != null)
-                    _buildWebVerseDetailCard(context, activeVerse, isDark),
+  Widget _buildIdxTabBtn(
+    String tabId,
+    String label,
+    bool isDark,
+    Color surfaceColor,
+    Color primaryColor,
+    Color textSecondary,
+  ) {
+    final active = _idxTab == tabId;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => setState(() => _idxTab = tabId),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? surfaceColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: active ? primaryColor : textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSidebarItemsList({
+    required String q,
+    required bool isDark,
+    required Color surfaceColor,
+    required Color subtleBg,
+    required Color borderSubtle,
+    required Color primaryColor,
+    required Color primarySubtle,
+    required Color goldColor,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    if (_idxTab == 'surah') {
+      final surahs = widget.allSurahs.where((s) {
+        if (q.isEmpty) return true;
+        return s.nameLatin.toLowerCase().contains(q) ||
+            s.translationId.toLowerCase().contains(q) ||
+            s.nameArabic.contains(q) ||
+            s.id.toString() == q;
+      }).toList();
+
+      if (surahs.isEmpty) {
+        return [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Surah tidak ditemukan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: textSecondary),
+            ),
+          ),
+        ];
+      }
+
+      return surahs.map((s) {
+        final isActive = widget.surah?.id == s.id;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => widget.onSelectSurah?.call(s.id),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive ? primarySubtle : surfaceColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isActive ? primaryColor : borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isActive ? primaryColor : subtleBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${s.id}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: isActive ? Colors.white : textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.nameLatin,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${s.translationId} • ${s.totalVerses} Ayat',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    s.nameArabic,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: goldColor,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         );
-      },
+      }).toList();
+    } else if (_idxTab == 'juz') {
+      final filtered = _juzIndexCatalog.where((item) {
+        if (q.isEmpty) return true;
+        return item.$1.toString().contains(q) ||
+            'juz ${item.$1}'.contains(q) ||
+            item.$3.toLowerCase().contains(q);
+      }).toList();
+
+      final currentJuz = widget.verses.isNotEmpty ? widget.verses.first.juzNumber : 30;
+      return filtered.map((item) {
+        final isActive = currentJuz == item.$1;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => widget.onSelectSurah?.call(item.$2),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive ? primarySubtle : surfaceColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isActive ? primaryColor : borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isActive ? primaryColor : subtleBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${item.$1}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: isActive ? Colors.white : textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Juz ${item.$1}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Mulai QS. ${item.$3}:${item.$4} • Hal ${item.$5}',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    'الجزء ${Mushaf15LineLayoutEngine.toArabicDigits(item.$1)}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: goldColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList();
+    } else if (_idxTab == 'page') {
+      final filtered = _juzIndexCatalog.where((item) {
+        if (q.isEmpty) return true;
+        return item.$5.toString().contains(q) || item.$3.toLowerCase().contains(q);
+      }).toList();
+
+      return filtered.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => widget.onSelectSurah?.call(item.$2),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: subtleBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${item.$5}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Halaman ${item.$5}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'QS. ${item.$3}:${item.$4} • Juz ${item.$1}',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    Mushaf15LineLayoutEngine.toArabicDigits(item.$5),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: goldColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList();
+    } else {
+      if (_bookmarks.isEmpty) {
+        return [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Belum ada ayat yang disimpan di Pin.\nTekan tombol Pin (🔖) pada kartu ayat untuk menandai ayat.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: textSecondary, height: 1.5),
+            ),
+          ),
+        ];
+      }
+      return _bookmarks.map((b) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderSubtle),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      widget.onSelectSurah?.call(b.surahId);
+                      _scrollToVerse(b.verseNumber);
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'QS. ${b.surahName} : Ayat ${b.verseNumber}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Hal ${b.pageNumber} • Juz ${b.juzNumber}',
+                          style: TextStyle(fontSize: 11, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    setState(() {
+                      _bookmarks.removeWhere((item) => item.key == b.key);
+                    });
+                  },
+                  icon: Icon(Icons.close_rounded, size: 16, color: textSecondary),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList();
+    }
+  }
+
+  Widget _buildGtafMainReaderColumn(
+    BuildContext context,
+    VoiceHifzSessionState state,
+    Verse? activeVerse,
+    bool isDark,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Toolbar Atas GTAF (Indeks, Pilih Surah/Ayat, Mode Tampilan, & Kustomisasi)
+        _buildGtafTopToolbar(context, isDark),
+
+        // 2. Panel Simak Suara Hafalan (Muncul saat tombol Simak Suara diaktifkan)
+        if (_showVoicePanel) ...[
+          const SizedBox(height: 14),
+          _buildWebVoiceHifzPanel(context, state, activeVerse, isDark),
+        ],
+
+        const SizedBox(height: 16),
+
+        // 3. Konten Utama: Mode Ayat & Per Kata (GTAF Default) vs Mode Lembaran Mushaf 15 Baris
+        if (!_isMushafSheetMode)
+          _buildGtafVerseByVerseReader(context, isDark)
+        else ...[
+          Mushaf15LinePageWidget(
+            verses: widget.verses,
+            activeVerseId: state.activeVerseId,
+            revealedWordPosition: state.revealedWordPosition,
+            hideVerseMode: widget.hideVerseMode || _blurHifz,
+            surahArabicName: widget.surah?.nameArabic,
+            revelationType: widget.surah?.revelationType,
+            onPrevPage: widget.onPrevSurahPage,
+            onNextPage: widget.onNextSurahPage,
+            onSelectVerse: (verse) => widget.voiceController.setActiveVerse(
+              verse,
+              revealAllInitially: !(widget.hideVerseMode || _blurHifz),
+            ),
+            onPlayVerseAudio: (verse) => widget.murattalAudioService.playVerse(
+              surahId: verse.surahId,
+              verseNumber: verse.verseNumber,
+              surahName: verse.surahNameLatin,
+            ),
+            onShowTafsir: widget.onShowTafsir,
+          ),
+          const SizedBox(height: 18),
+          if (activeVerse != null)
+            _buildWebVerseDetailCard(context, activeVerse, isDark),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGtafTopToolbar(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
+    final borderSubtle = isDark ? const Color(0xFF262D2A) : const Color(0xFFE6E1D6);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final primarySubtle = isDark ? const Color(0xFF132A20) : const Color(0xFFEAF4EE);
+    final textPrimary = isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F);
+    final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+    final activeSurahId = widget.surah?.id ?? (widget.verses.isNotEmpty ? widget.verses.first.surahId : 78);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              // Kiri: Tombol Indeks + Dropdown Surah + Dropdown Loncat Ayat
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _sidebarOpen ? primaryColor : textPrimary,
+                      backgroundColor: _sidebarOpen ? primarySubtle : surfaceColor,
+                      side: BorderSide(color: _sidebarOpen ? primaryColor : borderCard),
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+                    icon: const Icon(Icons.menu_rounded, size: 16),
+                    label: const Text('Indeks', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  ),
+                  if (widget.allSurahs.isNotEmpty)
+                    Container(
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderCard),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: widget.allSurahs.any((s) => s.id == activeSurahId)
+                              ? activeSurahId
+                              : widget.allSurahs.first.id,
+                          dropdownColor: surfaceColor,
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textPrimary),
+                          items: widget.allSurahs
+                              .map((s) => DropdownMenuItem<int>(
+                                    value: s.id,
+                                    child: Text('${s.id}. QS. ${s.nameLatin} (${s.totalVerses} Ayat)'),
+                                  ))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) widget.onSelectSurah?.call(val);
+                          },
+                        ),
+                      ),
+                    ),
+                  if (widget.verses.isNotEmpty)
+                    Container(
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderCard),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: widget.verses.any((v) => v.verseNumber == _selectedJumpVerseNum)
+                              ? _selectedJumpVerseNum
+                              : widget.verses.first.verseNumber,
+                          dropdownColor: surfaceColor,
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textPrimary),
+                          items: widget.verses
+                              .map((v) => DropdownMenuItem<int>(
+                                    value: v.verseNumber,
+                                    child: Text('Loncat: Ayat ${v.verseNumber}'),
+                                  ))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) _scrollToVerse(val);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Kanan: Switcher Mode Baca (Ayat & Per Kata vs Mushaf Madinah vs Simak Suara)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildToolbarToggleChip(
+                    label: 'Ayat & Per Kata',
+                    icon: Icons.format_list_bulleted_rounded,
+                    active: !_isMushafSheetMode,
+                    onTap: () => setState(() => _isMushafSheetMode = false),
+                    primaryColor: primaryColor,
+                    primarySubtle: primarySubtle,
+                    surfaceColor: surfaceColor,
+                    borderCard: borderCard,
+                    textPrimary: textPrimary,
+                  ),
+                  _buildToolbarToggleChip(
+                    label: 'Mushaf Madinah',
+                    icon: Icons.menu_book_outlined,
+                    active: _isMushafSheetMode,
+                    onTap: () => setState(() => _isMushafSheetMode = true),
+                    primaryColor: primaryColor,
+                    primarySubtle: primarySubtle,
+                    surfaceColor: surfaceColor,
+                    borderCard: borderCard,
+                    textPrimary: textPrimary,
+                  ),
+                  _buildToolbarToggleChip(
+                    label: 'Simak Suara',
+                    icon: Icons.mic_none_rounded,
+                    active: _showVoicePanel,
+                    onTap: () => setState(() => _showVoicePanel = !_showVoicePanel),
+                    primaryColor: primaryColor,
+                    primarySubtle: primarySubtle,
+                    surfaceColor: surfaceColor,
+                    borderCard: borderCard,
+                    textPrimary: textPrimary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          Divider(height: 1, color: borderSubtle),
+          const SizedBox(height: 10),
+
+          // Baris Pengaturan Tampilan GTAF
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildSmallOptionChip('Per Kata (WBW)', _showWbw, () => setState(() => _showWbw = !_showWbw), primaryColor, primarySubtle, surfaceColor, borderCard, textPrimary),
+                  _buildSmallOptionChip('Transliterasi', _showTranslit, () => setState(() => _showTranslit = !_showTranslit), primaryColor, primarySubtle, surfaceColor, borderCard, textPrimary),
+                  _buildSmallOptionChip('Terjemah Ayat', _showTranslation, () => setState(() => _showTranslation = !_showTranslation), primaryColor, primarySubtle, surfaceColor, borderCard, textPrimary),
+                  _buildSmallOptionChip('Tafsir Wajiz', _showTafsirAll, () => setState(() => _showTafsirAll = !_showTafsirAll), primaryColor, primarySubtle, surfaceColor, borderCard, textPrimary),
+                  _buildSmallOptionChip('Uji Hafalan (Blur)', _blurHifz, () {
+                    setState(() {
+                      _blurHifz = !_blurHifz;
+                      _revealedWordKeys.clear();
+                    });
+                  }, primaryColor, primarySubtle, surfaceColor, borderCard, textPrimary),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Font Arab:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary)),
+                  const SizedBox(width: 6),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(34, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      side: BorderSide(color: borderCard),
+                    ),
+                    onPressed: () => setState(() => _arabicScale = (_arabicScale - 0.1).clamp(0.75, 1.65)),
+                    child: const Text('A−', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () => setState(() => _arabicScale = 1.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: primarySubtle,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${(_arabicScale * 100).round()}%',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: primaryColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(34, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      side: BorderSide(color: borderCard),
+                    ),
+                    onPressed: () => setState(() => _arabicScale = (_arabicScale + 0.1).clamp(0.75, 1.65)),
+                    child: const Text('A+', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolbarToggleChip({
+    required String label,
+    required IconData icon,
+    required bool active,
+    required VoidCallback onTap,
+    required Color primaryColor,
+    required Color primarySubtle,
+    required Color surfaceColor,
+    required Color borderCard,
+    required Color textPrimary,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: onTap,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: active ? primarySubtle : surfaceColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: active ? primaryColor : borderCard),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: active ? primaryColor : textPrimary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: active ? primaryColor : textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallOptionChip(
+    String label,
+    bool active,
+    VoidCallback onTap,
+    Color primaryColor,
+    Color primarySubtle,
+    Color surfaceColor,
+    Color borderCard,
+    Color textPrimary,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? primarySubtle : surfaceColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: active ? primaryColor : borderCard),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: active ? primaryColor : textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGtafVerseByVerseReader(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final mushafBg = isDark ? const Color(0xFF181D1A) : const Color(0xFFFCFAF6);
+    final subtleBg = isDark ? const Color(0xFF242B27) : const Color(0xFFF1ECE0);
+    final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
+    final borderSubtle = isDark ? const Color(0xFF262D2A) : const Color(0xFFE6E1D6);
+    final borderOrnament = isDark ? const Color(0xFF6E5B33) : const Color(0xFFC8AA76);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final primarySubtle = isDark ? const Color(0xFF132A20) : const Color(0xFFEAF4EE);
+    final goldColor = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
+    final arabicColor = isDark ? const Color(0xFFF4F1EA) : const Color(0xFF111815);
+    final textPrimary = isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F);
+    final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+    final surah = widget.surah;
+    final firstVerse = widget.verses.isNotEmpty ? widget.verses.first : null;
+    final surahId = surah?.id ?? (firstVerse?.surahId ?? 78);
+    final surahLatin = surah?.nameLatin ?? (firstVerse?.surahNameLatin ?? 'Surah $surahId');
+    final surahTrans = surah?.translationId ?? '';
+    final surahArabic = surah?.nameArabic ?? '';
+    final revText = (surah?.revelationType.toLowerCase() == 'madaniyah') ? 'Madaniyah' : 'Makkiyah';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Kartu Banner Kepala Surah ala quran.gtaf.org
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+          decoration: BoxDecoration(
+            color: mushafBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderOrnament, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 14,
+                runSpacing: 12,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: primarySubtle,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: borderSubtle),
+                        ),
+                        child: Text(
+                          'SURAH KE-$surahId',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        surahTrans.isNotEmpty ? 'QS. $surahLatin ($surahTrans)' : 'QS. $surahLatin',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$revText • ${widget.verses.length} Ayat • Juz ${firstVerse?.juzNumber ?? 30} • Halaman ${firstVerse?.pageNumber ?? 582}',
+                        style: TextStyle(fontSize: 13, color: textSecondary),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (surahArabic.isNotEmpty)
+                        Text(
+                          'سُورَةُ $surahArabic',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(0, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                        ),
+                        onPressed: () {
+                          if (firstVerse != null) {
+                            widget.murattalAudioService.playVerse(
+                              surahId: firstVerse.surahId,
+                              verseNumber: firstVerse.verseNumber,
+                              surahName: surahLatin,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                        label: const Text('Putar Murattal Surah', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (surahId != 1 && surahId != 9) ...[
+                const SizedBox(height: 12),
+                Divider(height: 1, color: borderOrnament.withOpacity(0.5)),
+                const SizedBox(height: 12),
+                Text(
+                  'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: 25,
+                    color: arabicColor,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 2. Daftar Kartu Ayat Demi Ayat
+        ...widget.verses.map((v) {
+          final cardKey = _verseCardKeys.putIfAbsent(v.verseNumber, () => GlobalKey());
+          final verseKey = '${v.surahId}:${v.verseNumber}';
+          final isPlayingThis = widget.murattalAudioService.isPlaying &&
+              widget.murattalAudioService.playingSurahId == v.surahId &&
+              widget.murattalAudioService.playingVerseNumber == v.verseNumber;
+          final isBookmarked = _bookmarks.any((b) => b.key == verseKey);
+          final isTafsirOpen = _showTafsirAll || _expandedTafsirKeys.contains(verseKey);
+
+          final twinPair = widget.mutasyabihatPairs.cast<MutasyabihatComparisonPair?>().firstWhere(
+                (p) =>
+                    p != null &&
+                    ((p.surahId1 == v.surahId && p.verseNumber1 == v.verseNumber) ||
+                        (p.surahId2 == v.surahId && p.verseNumber2 == v.verseNumber)),
+                orElse: () => null,
+              );
+
+          return Container(
+            key: cardKey,
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isPlayingThis ? primaryColor : borderCard,
+                width: isPlayingThis ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Baris Header Aksi Kartu Ayat ala quran.gtaf.org
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: primarySubtle,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: borderSubtle),
+                          ),
+                          child: Text(
+                            '${v.surahId} : ${v.verseNumber}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Hal ${v.pageNumber} • Juz ${v.juzNumber}',
+                          style: TextStyle(fontSize: 12, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        _buildAyahIconBtn(
+                          icon: isPlayingThis ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          tooltip: isPlayingThis ? 'Jeda Audio Ayat' : 'Putar Audio Ayat',
+                          active: isPlayingThis,
+                          primaryColor: primaryColor,
+                          borderSubtle: borderSubtle,
+                          surfaceColor: surfaceColor,
+                          textSecondary: textSecondary,
+                          onTap: () {
+                            if (isPlayingThis) {
+                              widget.murattalAudioService.stop();
+                            } else {
+                              widget.voiceController.setActiveVerse(v, revealAllInitially: true);
+                              setState(() {
+                                _lastRead = _GtafBookmarkItem(
+                                  key: verseKey,
+                                  surahId: v.surahId,
+                                  surahName: surahLatin,
+                                  verseNumber: v.verseNumber,
+                                  pageNumber: v.pageNumber,
+                                  juzNumber: v.juzNumber,
+                                );
+                              });
+                              widget.murattalAudioService.playVerse(
+                                surahId: v.surahId,
+                                verseNumber: v.verseNumber,
+                                surahName: surahLatin,
+                              );
+                            }
+                          },
+                        ),
+                        _buildAyahIconBtn(
+                          icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                          tooltip: isBookmarked ? 'Hapus Pin Ayat' : 'Pin Ayat Ini',
+                          active: isBookmarked,
+                          primaryColor: goldColor,
+                          borderSubtle: borderSubtle,
+                          surfaceColor: surfaceColor,
+                          textSecondary: textSecondary,
+                          onTap: () {
+                            setState(() {
+                              final idx = _bookmarks.indexWhere((b) => b.key == verseKey);
+                              if (idx >= 0) {
+                                _bookmarks.removeAt(idx);
+                              } else {
+                                _bookmarks.insert(
+                                  0,
+                                  _GtafBookmarkItem(
+                                    key: verseKey,
+                                    surahId: v.surahId,
+                                    surahName: surahLatin,
+                                    verseNumber: v.verseNumber,
+                                    pageNumber: v.pageNumber,
+                                    juzNumber: v.juzNumber,
+                                  ),
+                                );
+                              }
+                            });
+                          },
+                        ),
+                        _buildAyahIconBtn(
+                          icon: Icons.push_pin_outlined,
+                          tooltip: 'Tandai Terakhir Dibaca',
+                          active: _lastRead?.key == verseKey,
+                          primaryColor: primaryColor,
+                          borderSubtle: borderSubtle,
+                          surfaceColor: surfaceColor,
+                          textSecondary: textSecondary,
+                          onTap: () {
+                            setState(() {
+                              _lastRead = _GtafBookmarkItem(
+                                key: verseKey,
+                                surahId: v.surahId,
+                                surahName: surahLatin,
+                                verseNumber: v.verseNumber,
+                                pageNumber: v.pageNumber,
+                                juzNumber: v.juzNumber,
+                              );
+                            });
+                          },
+                        ),
+                        _buildAyahIconBtn(
+                          icon: Icons.menu_book_outlined,
+                          tooltip: 'Tampilkan / Sembunyikan Tafsir Wajiz',
+                          active: isTafsirOpen,
+                          primaryColor: primaryColor,
+                          borderSubtle: borderSubtle,
+                          surfaceColor: surfaceColor,
+                          textSecondary: textSecondary,
+                          onTap: () {
+                            setState(() {
+                              if (_expandedTafsirKeys.contains(verseKey)) {
+                                _expandedTafsirKeys.remove(verseKey);
+                              } else {
+                                _expandedTafsirKeys.add(verseKey);
+                              }
+                            });
+                          },
+                        ),
+                        _buildAyahIconBtn(
+                          icon: Icons.copy_rounded,
+                          tooltip: 'Salin Ayat & Terjemahan',
+                          active: false,
+                          primaryColor: primaryColor,
+                          borderSubtle: borderSubtle,
+                          surfaceColor: surfaceColor,
+                          textSecondary: textSecondary,
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text: '${v.textUthmani}\n"${v.translationId}" (QS. $surahLatin: ${v.verseNumber})',
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Ayat & terjemahan disalin ke clipboard.'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                // Konten Arab: Per Kata (WBW) atau Baris Uthmani Utuh
+                if (_showWbw && v.words.isNotEmpty)
+                  Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        ...v.words.map((w) {
+                          final wKey = '$verseKey:${w.wordPosition}';
+                          final isBlurred = (_blurHifz || widget.hideVerseMode) &&
+                              !_revealedWordKeys.contains(wKey);
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              if (isBlurred) {
+                                setState(() => _revealedWordKeys.add(wKey));
+                              } else {
+                                widget.murattalAudioService.playVerse(
+                                  surahId: v.surahId,
+                                  verseNumber: v.verseNumber,
+                                  surahName: surahLatin,
+                                );
+                              }
+                            },
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 74),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: mushafBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: borderSubtle),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ImageFiltered(
+                                    imageFilter: ImageFilter.blur(
+                                      sigmaX: isBlurred ? 6 : 0,
+                                      sigmaY: isBlurred ? 6 : 0,
+                                    ),
+                                    child: Text(
+                                      w.textUthmani,
+                                      style: TextStyle(
+                                        fontSize: 25 * _arabicScale,
+                                        height: 1.6,
+                                        color: arabicColor,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_showTranslit &&
+                                      w.transliteration != null &&
+                                      w.transliteration!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        w.transliteration!,
+                                        textDirection: TextDirection.ltr,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontStyle: FontStyle.italic,
+                                          color: goldColor,
+                                        ),
+                                      ),
+                                    ),
+                                  if (w.translationId.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Text(
+                                        w.translationId,
+                                        textDirection: TextDirection.ltr,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Text(
+                            '۝${Mushaf15LineLayoutEngine.toArabicDigits(v.verseNumber)}',
+                            style: TextStyle(
+                              fontSize: 22 * _arabicScale,
+                              color: goldColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  InkWell(
+                    onTap: () {
+                      if ((_blurHifz || widget.hideVerseMode) && !_revealedWordKeys.contains(verseKey)) {
+                        setState(() => _revealedWordKeys.add(verseKey));
+                      } else {
+                        widget.murattalAudioService.playVerse(
+                          surahId: v.surahId,
+                          verseNumber: v.verseNumber,
+                          surahName: surahLatin,
+                        );
+                      }
+                    },
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: ((_blurHifz || widget.hideVerseMode) && !_revealedWordKeys.contains(verseKey)) ? 6 : 0,
+                        sigmaY: ((_blurHifz || widget.hideVerseMode) && !_revealedWordKeys.contains(verseKey)) ? 6 : 0,
+                      ),
+                      child: Text(
+                        '${v.textUthmani} ۝${Mushaf15LineLayoutEngine.toArabicDigits(v.verseNumber)}',
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 29 * _arabicScale,
+                          height: 2.0,
+                          color: arabicColor,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Terjemahan Bahasa Indonesia Kemenag RI
+                if (_showTranslation) ...[
+                  const SizedBox(height: 12),
+                  Divider(height: 1, color: borderSubtle),
+                  const SizedBox(height: 10),
+                  Text(
+                    'TERJEMAH KEMENAG RI',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      color: textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    v.translationId,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.6,
+                      color: textPrimary,
+                    ),
+                  ),
+                ],
+
+                // Info Kembaran Mutasyabihat (jika ada)
+                if (twinPair != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: goldColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: goldColor.withOpacity(0.45)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            twinPair.surahId1 == v.surahId && twinPair.verseNumber1 == v.verseNumber
+                                ? '✦ Memiliki Kembaran Mutasyabihat di QS. ${twinPair.surahName2} : Ayat ${twinPair.verseNumber2}'
+                                : '✦ Memiliki Kembaran Mutasyabihat di QS. ${twinPair.surahName1} : Ayat ${twinPair.verseNumber1}',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final targetSurah = (twinPair.surahId1 == v.surahId && twinPair.verseNumber1 == v.verseNumber)
+                                ? twinPair.surahId2
+                                : twinPair.surahId1;
+                            widget.onSelectSurah?.call(targetSurah);
+                          },
+                          child: const Text('Lihat Kembaran', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Kotak Tafsir Wajiz Kemenag RI
+                if (isTafsirOpen) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: subtleBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: borderSubtle),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '📖 Tafsir Wajiz Kemenag RI • QS. $surahLatin : Ayat ${v.verseNumber}',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          v.tafsirWajiz ?? v.translationId,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.6,
+                            color: textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }),
+
+        // 3. Footer Navigasi Pindah Surah
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderCard),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OutlinedButton.icon(
+                onPressed: widget.onPrevSurahPage,
+                icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                label: const Text('Surah Sebelumnya', style: TextStyle(fontSize: 12.5)),
+              ),
+              TextButton(
+                onPressed: () => _scrollToVerse(1),
+                child: const Text('↑ Ke Awal Surah', style: TextStyle(fontSize: 12.5)),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onNextSurahPage,
+                icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                label: const Text('Surah Selanjutnya', style: TextStyle(fontSize: 12.5)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAyahIconBtn({
+    required IconData icon,
+    required String tooltip,
+    required bool active,
+    required Color primaryColor,
+    required Color borderSubtle,
+    required Color surfaceColor,
+    required Color textSecondary,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: active ? primaryColor : surfaceColor,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: active ? primaryColor : borderSubtle),
+          ),
+          child: Icon(
+            icon,
+            size: 17,
+            color: active ? Colors.white : textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGtafStickyAudioBar(BuildContext context, bool isDark) {
+    final surfaceColor = isDark ? const Color(0xFF1B201E) : Colors.white;
+    final borderCard = isDark ? const Color(0xFF323B37) : const Color(0xFFDCD5C6);
+    final primaryColor = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+    final textPrimary = isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F);
+    final textSecondary = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+    final sId = widget.murattalAudioService.playingSurahId ?? (widget.surah?.id ?? 78);
+    final vNum = widget.murattalAudioService.playingVerseNumber ?? 1;
+    final surahLatin = widget.surah?.nameLatin ?? 'Surah $sId';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        border: Border(top: BorderSide(color: primaryColor, width: 2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.14),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1140),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: widget.murattalAudioService.isPlaying ? primaryColor : textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'QS. $surahLatin : Ayat $vNum',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textPrimary),
+                      ),
+                      Text(
+                        widget.murattalAudioService.selectedReciter.name,
+                        style: TextStyle(fontSize: 11.5, color: textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Ayat Sebelumnya',
+                    onPressed: vNum > 1
+                        ? () => widget.murattalAudioService.playVerse(
+                              surahId: sId,
+                              verseNumber: vNum - 1,
+                              surahName: surahLatin,
+                            )
+                        : null,
+                    icon: const Icon(Icons.skip_previous_rounded),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () {
+                      if (widget.murattalAudioService.isPlaying) {
+                        widget.murattalAudioService.stop();
+                      } else {
+                        widget.murattalAudioService.playVerse(
+                          surahId: sId,
+                          verseNumber: vNum,
+                          surahName: surahLatin,
+                        );
+                      }
+                    },
+                    icon: Icon(
+                      widget.murattalAudioService.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 16,
+                    ),
+                    label: Text(widget.murattalAudioService.isPlaying ? 'Jeda' : 'Putar'),
+                  ),
+                  IconButton(
+                    tooltip: 'Ayat Selanjutnya',
+                    onPressed: vNum < widget.verses.length
+                        ? () => widget.murattalAudioService.playVerse(
+                              surahId: sId,
+                              verseNumber: vNum + 1,
+                              surahName: surahLatin,
+                            )
+                        : null,
+                    icon: const Icon(Icons.skip_next_rounded),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: borderCard),
+                      minimumSize: const Size(0, 32),
+                    ),
+                    onPressed: () {
+                      final next = widget.murattalAudioService.repeatTargetCount == 1
+                          ? 3
+                          : (widget.murattalAudioService.repeatTargetCount == 3 ? 5 : 1);
+                      widget.murattalAudioService.setRepeatTargetCount(next);
+                    },
+                    child: Text(
+                      'Ulangi ${widget.murattalAudioService.repeatTargetCount}x',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    tooltip: 'Hentikan Audio',
+                    onPressed: () => widget.murattalAudioService.stop(),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -927,8 +2702,8 @@ class MushafVoiceHifzView extends StatelessWidget {
               InkWell(
                 borderRadius: BorderRadius.circular(999),
                 onTap: state.isListening
-                    ? voiceController.stopListening
-                    : () => voiceController.startListening(resetWordsOnStart: true),
+                    ? widget.voiceController.stopListening
+                    : () => widget.voiceController.startListening(resetWordsOnStart: true),
                 child: Container(
                   width: 48,
                   height: 48,
@@ -1028,7 +2803,7 @@ class MushafVoiceHifzView extends StatelessWidget {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: murattalAudioService.selectedReciter.id,
+                    value: widget.murattalAudioService.selectedReciter.id,
                     dropdownColor: surfaceColor,
                     style: TextStyle(
                       fontSize: 12.5,
@@ -1047,7 +2822,7 @@ class MushafVoiceHifzView extends StatelessWidget {
                       if (id == null) return;
                       final found = QariCatalog.supportedReciters
                           .firstWhere((q) => q.id == id);
-                      murattalAudioService.setReciter(found);
+                      widget.murattalAudioService.setReciter(found);
                     },
                   ),
                 ),
@@ -1070,10 +2845,10 @@ class MushafVoiceHifzView extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
-                      if (murattalAudioService.isPlaying) {
-                        murattalAudioService.stop();
+                      if (widget.murattalAudioService.isPlaying) {
+                        widget.murattalAudioService.stop();
                       } else if (activeVerse != null) {
-                        murattalAudioService.playVerse(
+                        widget.murattalAudioService.playVerse(
                           surahId: activeVerse.surahId,
                           verseNumber: activeVerse.verseNumber,
                           surahName: activeVerse.surahNameLatin,
@@ -1081,13 +2856,13 @@ class MushafVoiceHifzView extends StatelessWidget {
                       }
                     },
                     icon: Icon(
-                      murattalAudioService.isPlaying
+                      widget.murattalAudioService.isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
                       size: 16,
                     ),
                     label: Text(
-                      murattalAudioService.isPlaying ? 'Jeda Audio' : 'Putar Audio',
+                      widget.murattalAudioService.isPlaying ? 'Jeda Audio' : 'Putar Audio',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -1102,14 +2877,14 @@ class MushafVoiceHifzView extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
-                      final next = murattalAudioService.repeatTargetCount == 1
+                      final next = widget.murattalAudioService.repeatTargetCount == 1
                           ? 3
-                          : (murattalAudioService.repeatTargetCount == 3 ? 5 : 1);
-                      murattalAudioService.setRepeatTargetCount(next);
+                          : (widget.murattalAudioService.repeatTargetCount == 3 ? 5 : 1);
+                      widget.murattalAudioService.setRepeatTargetCount(next);
                     },
                     icon: const Icon(Icons.repeat_rounded, size: 15),
                     label: Text(
-                      'Ulangi ${murattalAudioService.repeatTargetCount}x',
+                      'Ulangi ${widget.murattalAudioService.repeatTargetCount}x',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -1123,7 +2898,7 @@ class MushafVoiceHifzView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    onPressed: () => voiceController.runInteractiveSimulation(
+                    onPressed: () => widget.voiceController.runInteractiveSimulation(
                       simulateTrapJump: true,
                     ),
                     child: const Text(
@@ -1257,7 +3032,7 @@ class MushafVoiceHifzView extends StatelessWidget {
               Row(
                 children: [
                   TextButton.icon(
-                    onPressed: () => onShowTafsir(verse),
+                    onPressed: () => widget.onShowTafsir(verse),
                     icon: const Icon(Icons.menu_book_outlined, size: 15),
                     label: const Text('Tafsir', style: TextStyle(fontSize: 12.5)),
                   ),
