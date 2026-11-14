@@ -43,6 +43,13 @@ cp "$SCRIPT_DIR/app_update_service.dart" "$PROJECT_NAME/lib/app_update_service.d
 cp "$SCRIPT_DIR/marked_mushaf_view.dart" "$PROJECT_NAME/lib/marked_mushaf_view.dart"
 cp "$SCRIPT_DIR/quran_hifz_app.dart" "$PROJECT_NAME/lib/main.dart"
 
+# Salin folder font resmi (kfgqpc_hafs, me_quran, kitab)
+mkdir -p "$PROJECT_NAME/assets/fonts"
+if [ -d "$SCRIPT_DIR/assets/fonts" ]; then
+  cp -R "$SCRIPT_DIR/assets/fonts/"* "$PROJECT_NAME/assets/fonts/" 2>/dev/null || true
+  echo "[Fonts] Berhasil menyalin font resmi kfgqpc_hafs, me_quran, kitab ke $PROJECT_NAME/assets/fonts/"
+fi
+
 # Salin quran_hifz_test.dart ke folder test/ dengan penyesuaian path import `../lib/`
 rm -f "$PROJECT_NAME/test/widget_test.dart"
 if [ -f "$SCRIPT_DIR/quran_hifz_test.dart" ]; then

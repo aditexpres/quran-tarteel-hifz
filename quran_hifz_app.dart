@@ -53,6 +53,7 @@ class _QuranTarteelHifzAppState extends State<QuranTarteelHifzApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        fontFamilyFallback: const ['kfgqpc_hafs', 'me_quran', 'kitab'],
         brightness: Brightness.light,
         colorScheme: const ColorScheme(
           brightness: Brightness.light,
@@ -71,6 +72,7 @@ class _QuranTarteelHifzAppState extends State<QuranTarteelHifzApp> {
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
+        fontFamilyFallback: const ['kfgqpc_hafs', 'me_quran', 'kitab'],
         brightness: Brightness.dark,
         colorScheme: const ColorScheme(
           brightness: Brightness.dark,
@@ -906,6 +908,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
   bool _showTafsirAll = false;
   bool _blurHifz = false;
   double _arabicScale = 1.0;
+  String _arabicFontFamily = 'kfgqpc_hafs';
 
   int _selectedJumpVerseNum = 1;
   final Set<String> _expandedTafsirKeys = <String>{};
@@ -1316,6 +1319,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                   Text(
                     s.nameArabic,
                     style: TextStyle(
+                      fontFamily: 'kfgqpc_hafs',
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: goldColor,
@@ -1775,6 +1779,31 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                 children: [
                   Text('Font Arab:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary)),
                   const SizedBox(width: 6),
+                  Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: borderCard),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _arabicFontFamily,
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: textPrimary),
+                        dropdownColor: surfaceColor,
+                        items: const [
+                          DropdownMenuItem(value: 'kfgqpc_hafs', child: Text('KFGQPC Hafs (GTAF Default)')),
+                          DropdownMenuItem(value: 'me_quran', child: Text('Me Quran (GTAF)')),
+                          DropdownMenuItem(value: 'kitab', child: Text('Kitab (GTAF)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setState(() => _arabicFontFamily = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(34, 30),
@@ -1976,6 +2005,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                           'سُورَةُ $surahArabic',
                           textDirection: TextDirection.rtl,
                           style: TextStyle(
+                            fontFamily: _arabicFontFamily,
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
                             color: primaryColor,
@@ -2014,6 +2044,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                   textAlign: TextAlign.center,
                   textDirection: TextDirection.rtl,
                   style: TextStyle(
+                    fontFamily: _arabicFontFamily,
                     fontSize: 25,
                     color: arabicColor,
                   ),
@@ -2267,6 +2298,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                                     child: Text(
                                       w.textUthmani,
                                       style: TextStyle(
+                                        fontFamily: _arabicFontFamily,
                                         fontSize: 25 * _arabicScale,
                                         height: 1.6,
                                         color: arabicColor,
@@ -2312,6 +2344,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                           child: Text(
                             '۝${Mushaf15LineLayoutEngine.toArabicDigits(v.verseNumber)}',
                             style: TextStyle(
+                              fontFamily: _arabicFontFamily,
                               fontSize: 22 * _arabicScale,
                               color: goldColor,
                             ),
@@ -2343,6 +2376,7 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                         textDirection: TextDirection.rtl,
                         textAlign: TextAlign.right,
                         style: TextStyle(
+                          fontFamily: _arabicFontFamily,
                           fontSize: 29 * _arabicScale,
                           height: 2.0,
                           color: arabicColor,

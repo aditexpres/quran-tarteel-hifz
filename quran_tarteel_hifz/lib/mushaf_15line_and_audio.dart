@@ -1113,6 +1113,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             titleArabic,
             textDirection: TextDirection.rtl,
             style: TextStyle(
+              fontFamily: 'kfgqpc_hafs',
               fontSize: 19 * effectiveFontScale,
               fontWeight: FontWeight.w700,
               color: primaryColor,
@@ -1134,6 +1135,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
             textDirection: TextDirection.rtl,
             style: TextStyle(
+              fontFamily: 'kfgqpc_hafs',
               fontSize: 21 * effectiveFontScale,
               fontWeight: FontWeight.w600,
               color: arabicColor,
@@ -1159,6 +1161,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             child: Text(
               '۝${Mushaf15LineLayoutEngine.toArabicDigits(token.verse.verseNumber)}',
               style: TextStyle(
+                fontFamily: 'kfgqpc_hafs',
                 fontSize: 21 * effectiveFontScale,
                 fontWeight: FontWeight.w700,
                 color: isVerseActive ? primaryColor : goldText,
@@ -1191,6 +1194,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             child: Text(
               word.textUthmani,
               style: TextStyle(
+                fontFamily: 'kfgqpc_hafs',
                 fontSize: 24 * effectiveFontScale,
                 height: 1.75,
                 fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
