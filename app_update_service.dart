@@ -106,6 +106,8 @@ class AppUpdateService {
           }
         } else if (name.endsWith('.zip') && (name.contains('windows') || name.contains('win'))) {
           winUrl ??= downloadUrl;
+        } else if (name.endsWith('.pkg')) {
+          macUrl = downloadUrl;
         } else if (name.endsWith('.dmg')) {
           macUrl ??= downloadUrl;
         }
@@ -301,7 +303,7 @@ class _InAppUpdateDialogState extends State<_InAppUpdateDialog> {
 
     // Jika URL mengarah ke halaman web rilis (bukan file langsung), buka di browser
     final lowerUrl = targetUrl.toLowerCase();
-    if (!lowerUrl.endsWith('.apk') && !lowerUrl.endsWith('.zip') && !lowerUrl.endsWith('.dmg')) {
+    if (!lowerUrl.endsWith('.apk') && !lowerUrl.endsWith('.zip') && !lowerUrl.endsWith('.dmg') && !lowerUrl.endsWith('.pkg')) {
       await AppUpdateService.openDownloadUrl(targetUrl);
       if (mounted) Navigator.pop(context);
       return;
@@ -337,7 +339,11 @@ class _InAppUpdateDialogState extends State<_InAppUpdateDialog> {
       } else if (Platform.isWindows) {
         fileName = '$fileName-Windows-x64.zip';
       } else if (Platform.isMacOS) {
-        fileName = '$fileName-macOS-Universal.dmg';
+        if (targetUrl.toLowerCase().endsWith('.pkg')) {
+          fileName = '$fileName-macOS-Universal.pkg';
+        } else {
+          fileName = '$fileName-macOS-Universal.dmg';
+        }
       }
 
       final saveFile = File('${tempDir.path}${Platform.pathSeparator}$fileName');
@@ -353,7 +359,7 @@ class _InAppUpdateDialogState extends State<_InAppUpdateDialog> {
         if (mounted) {
           setState(() {
             if (_totalBytes > 0) {
-              _progress = _receivedBytes / _totalBytes;
+              _progress = (_receivedBytes / _totalBytes).clamp(0.0, 1.0);
               _statusMessage =
                   'Mengunduh pembaruan... ${(_progress * 100).toStringAsFixed(0)}% (${_formatBytes(_receivedBytes)} / ${_formatBytes(_totalBytes)})';
             } else {
@@ -361,10 +367,14 @@ class _InAppUpdateDialogState extends State<_InAppUpdateDialog> {
             }
           });
         }
+        if (_totalBytes > 0 && _receivedBytes >= _totalBytes) {
+          break;
+        }
       }
 
       await sink.flush();
       await sink.close();
+      _httpClient?.close();
 
       _downloadedFilePath = saveFile.path;
 
@@ -400,7 +410,13 @@ class _InAppUpdateDialogState extends State<_InAppUpdateDialog> {
       } else if (Platform.isWindows) {
         await _applyWindowsUpdate(filePath);
       } else if (Platform.isMacOS) {
+        await Process.run('xattr', ['-cr', filePath]);
         await Process.run('open', [filePath]);
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Installer macOS berhasil dibuka! Silakan ikuti panduan di layar.';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
