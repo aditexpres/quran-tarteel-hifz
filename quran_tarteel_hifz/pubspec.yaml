@@ -34,3 +34,15 @@ flutter:
   # Pendaftaran Aset Database Master Read-Only
   assets:
     - assets/db/quran_master.db
+    - assets/fonts/
+
+  fonts:
+    - family: kfgqpc_hafs
+      fonts:
+        - asset: assets/fonts/kfgqpc_hafs.ttf
+    - family: me_quran
+      fonts:
+        - asset: assets/fonts/me_quran.ttf
+    - family: kitab
+      fonts:
+        - asset: assets/fonts/kitab.ttf

@@ -324,7 +324,7 @@ class _MarkedMushafMutasyabihatViewState
                           Text(
                             'الجزء ${firstVerse.juzNumber}',
                             style: TextStyle(
-                              fontFamily: 'Amiri',
+                              fontFamily: 'kfgqpc_hafs',
                               fontSize: 16 * _zoomScale,
                               color: const Color(0xFF9B7A38),
                               fontWeight: FontWeight.bold,
@@ -341,7 +341,7 @@ class _MarkedMushafMutasyabihatViewState
                                   Text(
                                     'سُورَةُ ${_activeSurah?.nameArabic ?? firstVerse.surahNameLatin ?? ''}',
                                     style: TextStyle(
-                                      fontFamily: 'Amiri',
+                                      fontFamily: 'kfgqpc_hafs',
                                       fontSize: 20 * _zoomScale,
                                       color: primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -360,7 +360,7 @@ class _MarkedMushafMutasyabihatViewState
                           Text(
                             '${firstVerse.pageNumber}',
                             style: TextStyle(
-                              fontFamily: 'Amiri',
+                              fontFamily: 'kfgqpc_hafs',
                               fontSize: 16 * _zoomScale,
                               color: const Color(0xFF9B7A38),
                               fontWeight: FontWeight.bold,
@@ -376,7 +376,7 @@ class _MarkedMushafMutasyabihatViewState
                           'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontFamily: 'Amiri',
+                            fontFamily: 'kfgqpc_hafs',
                             fontSize: 22 * _zoomScale,
                             height: 1.8,
                           ),
@@ -1111,7 +1111,7 @@ class _SurahPickerSheetState extends State<_SurahPickerSheet> {
                               Text(
                                 surah.nameArabic,
                                 style: const TextStyle(
-                                  fontFamily: 'Amiri',
+                                  fontFamily: 'kfgqpc_hafs',
                                   fontSize: 19,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF9B7A38),

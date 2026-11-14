@@ -229,6 +229,7 @@
     btnGtafOptTranslation: document.getElementById('btn-gtaf-opt-translation'),
     btnGtafOptTafsir: document.getElementById('btn-gtaf-opt-tafsir'),
     btnGtafOptBlur: document.getElementById('btn-gtaf-opt-blur'),
+    selectGtafFontFamily: document.getElementById('select-gtaf-font-family'),
     btnGtafFontDec: document.getElementById('btn-gtaf-font-dec'),
     btnGtafFontReset: document.getElementById('btn-gtaf-font-reset'),
     btnGtafFontInc: document.getElementById('btn-gtaf-font-inc'),
@@ -1333,7 +1334,7 @@
             </div>
           </div>
         </div>
-        <div style="font-family:'Amiri', serif; font-size:20px; font-weight:700; color:var(--gold, #9B7A38);">
+        <div style="font-family:var(--font-arabic); font-size:20px; font-weight:700; color:var(--gold, #9B7A38);">
           ${s.name_arabic}
         </div>
       `;
@@ -3030,6 +3031,30 @@
       if (DOM.btnGtafFontReset) {
         DOM.btnGtafFontReset.textContent = `${Math.round(state.gtaf.arabicScale * 100)}%`;
       }
+    }
+
+    function applyGtafArabicFont(fontName) {
+      const fontMap = {
+        'kfgqpc_hafs': "'kfgqpc_hafs', 'Lateef', 'me_quran', 'kitab', 'Amiri', serif",
+        'Lateef': "'Lateef', 'kfgqpc_hafs', 'me_quran', 'kitab', 'Amiri', serif",
+        'me_quran': "'me_quran', 'kfgqpc_hafs', 'Lateef', 'kitab', 'Amiri', serif",
+        'kitab': "'kitab', 'kfgqpc_hafs', 'Lateef', 'Amiri', serif",
+        'Amiri': "'Amiri', 'kfgqpc_hafs', 'Scheherazade New', serif"
+      };
+      const fontVal = fontMap[fontName] || fontMap['kfgqpc_hafs'];
+      document.documentElement.style.setProperty('--font-arabic', fontVal);
+      try {
+        localStorage.setItem('gtaf_arabic_font', fontName);
+      } catch (e) {}
+    }
+
+    if (DOM.selectGtafFontFamily) {
+      const savedFont = localStorage.getItem('gtaf_arabic_font') || 'kfgqpc_hafs';
+      DOM.selectGtafFontFamily.value = savedFont;
+      applyGtafArabicFont(savedFont);
+      DOM.selectGtafFontFamily.addEventListener('change', (e) => {
+        applyGtafArabicFont(e.target.value);
+      });
     }
 
     if (DOM.btnGtafFontDec) {

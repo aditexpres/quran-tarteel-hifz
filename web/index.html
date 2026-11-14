@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#185238">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Scheherazade+New:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Lateef:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Scheherazade+New:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -228,6 +228,13 @@
 
               <div class="gtaf-font-controls">
                 <span class="gtaf-font-label">Font Arab:</span>
+                <select id="select-gtaf-font-family" class="select-dropdown xs" aria-label="Gaya Font Arab ala GTAF" title="Pilih Font Arab Resmi ala quran.gtaf.org">
+                  <option value="kfgqpc_hafs" selected>KFGQPC Hafs (GTAF Default)</option>
+                  <option value="Lateef">Lateef (SIL / GTAF)</option>
+                  <option value="me_quran">Me Quran (GTAF)</option>
+                  <option value="kitab">Kitab (GTAF)</option>
+                  <option value="Amiri">Amiri</option>
+                </select>
                 <button type="button" id="btn-gtaf-font-dec" class="btn btn-ghost btn-xs" aria-label="Perkecil Huruf Arab" title="Perkecil Huruf Arab">A−</button>
                 <button type="button" id="btn-gtaf-font-reset" class="zoom-pct-badge" title="Reset ukuran huruf ke 100%">100%</button>
                 <button type="button" id="btn-gtaf-font-inc" class="btn btn-ghost btn-xs" aria-label="Perbesar Huruf Arab" title="Perbesar Huruf Arab">A+</button>
