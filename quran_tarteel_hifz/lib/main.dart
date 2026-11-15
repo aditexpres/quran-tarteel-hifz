@@ -5194,9 +5194,43 @@ class _MutasyabihatRadarViewState extends State<MutasyabihatRadarView> {
           const SizedBox(height: 8),
           Divider(height: 1, color: borderSubtle),
           const SizedBox(height: 8),
-          Text(
-            'Ayat selanjutnya: $nextVersePreview',
-            style: TextStyle(fontSize: 12, color: textSecondary),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF141A17) : const Color(0xFFF0EBE0),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? const Color(0xFF28342E) : const Color(0xFFDFD7C7),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Ayat selanjutnya:',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    nextVersePreview,
+                    textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontFamily: 'kfgqpc_hafs',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: primaryColor,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -747,12 +747,57 @@ class _MarkedMushafMutasyabihatViewState
                       verse.textUthmani,
                       textDirection: TextDirection.rtl,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 21, height: 1.95),
+                      style: const TextStyle(
+                        fontFamily: 'kfgqpc_hafs',
+                        fontSize: 22,
+                        height: 1.95,
+                      ),
                     ),
                     const Divider(height: 16),
-                    Text(
-                      'Awal ayat selanjutnya: $nextCurrent',
-                      style: const TextStyle(fontSize: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF141A17) : const Color(0xFFF0EBE0),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF28342E) : const Color(0xFFDFD7C7),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'Awal ayat selanjutnya:',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              nextCurrent,
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontFamily: 'kfgqpc_hafs',
+                                fontSize: 21,
+                                fontWeight: FontWeight.w700,
+                                color: primaryColor,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -793,12 +838,57 @@ class _MarkedMushafMutasyabihatViewState
                       twinText,
                       textDirection: TextDirection.rtl,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 21, height: 1.95),
+                      style: const TextStyle(
+                        fontFamily: 'kfgqpc_hafs',
+                        fontSize: 22,
+                        height: 1.95,
+                      ),
                     ),
                     const Divider(height: 16),
-                    Text(
-                      'Awal ayat selanjutnya: $nextTwin',
-                      style: const TextStyle(fontSize: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1C1A14) : const Color(0xFFF3EFE6),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF383226) : const Color(0xFFE2DBCB),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: goldColor.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'Awal ayat selanjutnya:',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: goldColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              nextTwin,
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontFamily: 'kfgqpc_hafs',
+                                fontSize: 21,
+                                fontWeight: FontWeight.w700,
+                                color: goldColor,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

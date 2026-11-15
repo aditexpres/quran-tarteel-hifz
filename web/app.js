@@ -1235,7 +1235,8 @@
           </div>
           <div class="inspector-arabic">${highlightDiffWords(currentVerse.text_uthmani, currentDiff)}</div>
           <div class="inspector-next">
-            Lanjutan ayat yang benar: <strong>${nextCurrent || '...'}</strong>
+            <span class="inspector-next-label">Awal ayat selanjutnya:</span>
+            <span class="inspector-next-arabic">${nextCurrent || '...'}</span>
           </div>
         </div>
 
@@ -1249,7 +1250,8 @@
           </div>
           <div class="inspector-arabic">${highlightDiffWords(twinText, twinDiff)}</div>
           <div class="inspector-next">
-            Lanjutan ayat kembarannya: <strong>${nextTwin || '...'}</strong>
+            <span class="inspector-next-label">Awal ayat selanjutnya:</span>
+            <span class="inspector-next-arabic">${nextTwin || '...'}</span>
           </div>
         </div>
       </div>

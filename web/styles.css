@@ -1483,10 +1483,36 @@ kbd {
 }
 
 .inspector-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background-color: var(--bg-subtle, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  padding: 8px 12px;
+  margin-top: 10px;
+}
+
+.inspector-next-label {
   font-size: 0.78rem;
+  font-weight: 700;
   color: var(--text-secondary);
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 6px;
+  white-space: nowrap;
+}
+
+.inspector-next-arabic {
+  font-family: var(--font-arabic, 'kfgqpc_hafs');
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  direction: rtl;
+  text-align: right;
+  line-height: 1.5;
+}
+
+.inspector-box:nth-child(2) .inspector-next-arabic {
+  color: var(--accent-gold, #9B7A38);
 }
 
 .inspector-anchor {
