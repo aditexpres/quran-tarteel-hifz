@@ -729,6 +729,7 @@ class Mushaf15LinePageWidget extends StatefulWidget {
   final void Function(Verse verse) onSelectVerse;
   final void Function(Verse verse) onPlayVerseAudio;
   final void Function(Verse verse) onShowTafsir;
+  final String? fontFamily;
 
   const Mushaf15LinePageWidget({
     super.key,
@@ -743,6 +744,7 @@ class Mushaf15LinePageWidget extends StatefulWidget {
     required this.onSelectVerse,
     required this.onPlayVerseAudio,
     required this.onShowTafsir,
+    this.fontFamily,
   });
 
   @override
@@ -1113,7 +1115,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             titleArabic,
             textDirection: TextDirection.rtl,
             style: TextStyle(
-              fontFamily: 'kfgqpc_hafs',
+              fontFamily: widget.fontFamily ?? 'kfgqpc_hafs',
               fontSize: 19 * effectiveFontScale,
               fontWeight: FontWeight.w700,
               color: primaryColor,
@@ -1135,7 +1137,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
             textDirection: TextDirection.rtl,
             style: TextStyle(
-              fontFamily: 'kfgqpc_hafs',
+              fontFamily: widget.fontFamily ?? 'kfgqpc_hafs',
               fontSize: 21 * effectiveFontScale,
               fontWeight: FontWeight.w600,
               color: arabicColor,
@@ -1161,7 +1163,7 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
             child: Text(
               '۝${Mushaf15LineLayoutEngine.toArabicDigits(token.verse.verseNumber)}',
               style: TextStyle(
-                fontFamily: 'kfgqpc_hafs',
+                fontFamily: widget.fontFamily ?? 'kfgqpc_hafs',
                 fontSize: 21 * effectiveFontScale,
                 fontWeight: FontWeight.w700,
                 color: isVerseActive ? primaryColor : goldText,
@@ -1186,22 +1188,30 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: isRevealed ? 0.0 : 8.0,
-              sigmaY: isRevealed ? 0.0 : 8.0,
-            ),
-            child: Text(
-              word.textUthmani,
-              style: TextStyle(
-                fontFamily: 'kfgqpc_hafs',
-                fontSize: 24 * effectiveFontScale,
-                height: 1.75,
-                fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
-                color: isVerseActive && isRevealed ? primaryColor : arabicColor,
-              ),
-            ),
-          ),
+          child: isRevealed
+              ? Text(
+                  word.textUthmani,
+                  style: TextStyle(
+                    fontFamily: widget.fontFamily ?? 'kfgqpc_hafs',
+                    fontSize: 24 * effectiveFontScale,
+                    height: 1.75,
+                    fontWeight: isVerseActive ? FontWeight.w600 : FontWeight.w500,
+                    color: isVerseActive ? primaryColor : arabicColor,
+                  ),
+                )
+              : ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                  child: Text(
+                    word.textUthmani,
+                    style: TextStyle(
+                      fontFamily: widget.fontFamily ?? 'kfgqpc_hafs',
+                      fontSize: 24 * effectiveFontScale,
+                      height: 1.75,
+                      fontWeight: FontWeight.w500,
+                      color: arabicColor,
+                    ),
+                  ),
+                ),
         ),
       );
     }).toList();
@@ -1215,26 +1225,17 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
       ),
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: _singleSheetFitMode
-            ? FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: 560 * effectiveFontScale),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: tokenWidgets,
-                  ),
-                ),
-              )
-            : Wrap(
-                alignment: WrapAlignment.spaceEvenly,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 6,
-                children: tokenWidgets,
-              ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8 * effectiveFontScale,
+            runSpacing: 4 * effectiveFontScale,
+            children: tokenWidgets,
+          ),
+        ),
       ),
     );
   }

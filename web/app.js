@@ -418,37 +418,51 @@
     const surah = state.data.surahs.find(s => s.id === state.activeSurahId);
     if (!surah) return;
 
-    const verses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
-    if (!verses.length) return;
+    const surahVerses = state.data.verses.filter(v => v.surah_id === state.activeSurahId);
+    if (!surahVerses.length) return;
 
-    const currentJuz = verses[0].juz_number || 30;
+    // Pastikan activePageNumber berada dalam rentang halaman surah ini jika belum ditentukan
+    const surahPages = [...new Set(surahVerses.map(v => v.page_number))].sort((a, b) => a - b);
+    if (!surahPages.includes(state.activePageNumber)) {
+      state.activePageNumber = surahPages[0];
+    }
+
+    // Ambil ayat hanya untuk halaman aktif (bukan seluruh surah sekaligus)
+    const pageVerses = surahVerses.filter(v => v.page_number === state.activePageNumber);
+    if (!pageVerses.length) return;
+
+    const currentJuz = pageVerses[0].juz_number || surahVerses[0].juz_number || 30;
 
     if (DOM.mushafJuzLabel) DOM.mushafJuzLabel.textContent = `الجزء ${toArabicDigits(currentJuz)}`;
     DOM.mushafSurahLabel.textContent = `سُورَةُ ${surah.name_arabic}`;
     DOM.mushafPageLabel.textContent = toArabicDigits(state.activePageNumber);
-    DOM.pageIndicator.textContent = `Halaman ${state.activePageNumber}`;
+    if (DOM.pageIndicator) DOM.pageIndicator.textContent = `Halaman ${state.activePageNumber}`;
 
     // Render 15 Baris Mushaf
     DOM.mushafLinesContainer.innerHTML = '';
 
-    // Baris 1: Header Surah
-    const headerLine = document.createElement('div');
-    headerLine.className = 'mushaf-line surah-header-line';
-    headerLine.innerHTML = `<span class="surah-header-banner">سُورَةُ ${surah.name_arabic} • ${surah.revelation_type === 'madaniyah' ? 'مَدَنِيَّة' : 'مَكِّيَّة'}</span>`;
-    DOM.mushafLinesContainer.appendChild(headerLine);
+    // Hanya tampilkan Header Surah & Basmalah jika ayat 1 berada di halaman ini
+    const hasVerseOne = pageVerses.some(v => v.verse_number === 1);
+    if (hasVerseOne) {
+      // Baris 1: Header Surah
+      const headerLine = document.createElement('div');
+      headerLine.className = 'mushaf-line surah-header-line';
+      headerLine.innerHTML = `<span class="surah-header-banner">سُورَةُ ${surah.name_arabic} • ${surah.revelation_type === 'madaniyah' ? 'مَدَنِيَّة' : 'مَكِّيَّة'}</span>`;
+      DOM.mushafLinesContainer.appendChild(headerLine);
 
-    // Baris 2: Basmalah (jika bukan At-Taubah)
-    if (surah.id !== 9) {
-      const bismillahLine = document.createElement('div');
-      bismillahLine.className = 'mushaf-line bismillah-line';
-      bismillahLine.textContent = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
-      DOM.mushafLinesContainer.appendChild(bismillahLine);
+      // Baris 2: Basmalah (jika bukan At-Taubah)
+      if (surah.id !== 9) {
+        const bismillahLine = document.createElement('div');
+        bismillahLine.className = 'mushaf-line bismillah-line';
+        bismillahLine.textContent = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+        DOM.mushafLinesContainer.appendChild(bismillahLine);
+      }
     }
 
-    // Bangun token kata per ayat
+    // Bangun token kata per ayat dari pageVerses
     const allWords = [];
-    verses.forEach(v => {
-      v.words.forEach(w => {
+    pageVerses.forEach(v => {
+      (v.words || []).forEach(w => {
         allWords.push({
           verse: v,
           word: w
@@ -509,10 +523,10 @@
       DOM.mushafLinesContainer.appendChild(emptyLine);
     }
 
-    // Tampilkan detail ayat pertama
-    selectActiveVerse(verses[0], 0);
+    // Tampilkan detail ayat pertama di halaman ini
+    selectActiveVerse(pageVerses[0], 0);
 
-    // Sinkronkan juga tampilan Al-Qur'an Dasar model quran.gtaf.org
+    // Sinkronkan juga tampilan Al-Qur'an Dasar
     renderGtafSidebar();
     renderGtafReaderView();
   }
@@ -2818,8 +2832,12 @@
 
     // Page navigation
     DOM.btnPrevPage.addEventListener('click', () => {
-      if (state.activePageNumber > 582) {
+      if (state.activePageNumber > 1) {
         state.activePageNumber--;
+        const targetVerse = state.data.verses.find(v => v.page_number === state.activePageNumber);
+        if (targetVerse && targetVerse.surah_id !== state.activeSurahId) {
+          state.activeSurahId = targetVerse.surah_id;
+        }
         renderMushafView();
       }
     });
@@ -2827,6 +2845,10 @@
     DOM.btnNextPage.addEventListener('click', () => {
       if (state.activePageNumber < 604) {
         state.activePageNumber++;
+        const targetVerse = state.data.verses.find(v => v.page_number === state.activePageNumber);
+        if (targetVerse && targetVerse.surah_id !== state.activeSurahId) {
+          state.activeSurahId = targetVerse.surah_id;
+        }
         renderMushafView();
       }
     });

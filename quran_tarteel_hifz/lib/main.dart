@@ -510,7 +510,7 @@ class _QuranHifzHomeScreenState extends State<QuranHifzHomeScreen> {
     final goldColor = isDark ? const Color(0xFFD9B36C) : const Color(0xFF9B7A38);
 
     final tabs = [
-      (index: 0, icon: Icons.menu_book_outlined, label: 'Al-Qur\'an (GTAF)', badge: null),
+      (index: 0, icon: Icons.menu_book_outlined, label: 'Al-Qur\'an', badge: null),
       (index: 1, icon: Icons.star_outline_rounded, label: 'Mushaf Bertanda', badge: null),
       (index: 2, icon: Icons.mic_none_rounded, label: 'Koreksi Bacaan', badge: null),
       (
@@ -909,6 +909,16 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
   bool _blurHifz = false;
   double _arabicScale = 1.0;
   String _arabicFontFamily = 'kfgqpc_hafs';
+  int _currentMushafPageNumber = 0;
+
+  int get _activeMushafPage {
+    final availablePages = widget.verses.map((v) => v.pageNumber).toSet().toList()..sort();
+    if (availablePages.isEmpty) return 1;
+    if (_currentMushafPageNumber > 0 && availablePages.contains(_currentMushafPageNumber)) {
+      return _currentMushafPageNumber;
+    }
+    return availablePages.first;
+  }
 
   int _selectedJumpVerseNum = 1;
   final Set<String> _expandedTafsirKeys = <String>{};
@@ -917,9 +927,23 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
   _GtafBookmarkItem? _lastRead;
   final Map<int, GlobalKey> _verseCardKeys = <int, GlobalKey>{};
 
+  @override
+  void didUpdateWidget(covariant MushafVoiceHifzView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.surah?.id != widget.surah?.id) {
+      final availablePages = widget.verses.map((v) => v.pageNumber).toSet().toList()..sort();
+      _currentMushafPageNumber = availablePages.isNotEmpty ? availablePages.first : 0;
+      _selectedJumpVerseNum = 1;
+    }
+  }
+
   void _scrollToVerse(int verseNum) {
     setState(() {
       _selectedJumpVerseNum = verseNum;
+      final match = widget.verses.where((v) => v.verseNumber == verseNum).firstOrNull;
+      if (match != null) {
+        _currentMushafPageNumber = match.pageNumber;
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final key = _verseCardKeys[verseNum];
@@ -1346,7 +1370,13 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
           padding: const EdgeInsets.only(bottom: 6),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
-            onTap: () => widget.onSelectSurah?.call(item.$2),
+            onTap: () {
+              widget.onSelectSurah?.call(item.$2);
+              setState(() {
+                _currentMushafPageNumber = item.$5;
+                _selectedJumpVerseNum = item.$4;
+              });
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -1419,7 +1449,13 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
           padding: const EdgeInsets.only(bottom: 6),
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
-            onTap: () => widget.onSelectSurah?.call(item.$2),
+            onTap: () {
+              widget.onSelectSurah?.call(item.$2);
+              setState(() {
+                _currentMushafPageNumber = item.$5;
+                _selectedJumpVerseNum = item.$4;
+              });
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -1568,29 +1604,105 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
 
         const SizedBox(height: 16),
 
-        // 3. Konten Utama: Mode Ayat & Per Kata (GTAF Default) vs Mode Lembaran Mushaf 15 Baris
+        // 3. Konten Utama: Mode Ayat & Per Kata vs Mode Lembaran Mushaf 15 Baris
         if (!_isMushafSheetMode)
           _buildGtafVerseByVerseReader(context, isDark)
         else ...[
-          Mushaf15LinePageWidget(
-            verses: widget.verses,
-            activeVerseId: state.activeVerseId,
-            revealedWordPosition: state.revealedWordPosition,
-            hideVerseMode: widget.hideVerseMode || _blurHifz,
-            surahArabicName: widget.surah?.nameArabic,
-            revelationType: widget.surah?.revelationType,
-            onPrevPage: widget.onPrevSurahPage,
-            onNextPage: widget.onNextSurahPage,
-            onSelectVerse: (verse) => widget.voiceController.setActiveVerse(
-              verse,
-              revealAllInitially: !(widget.hideVerseMode || _blurHifz),
-            ),
-            onPlayVerseAudio: (verse) => widget.murattalAudioService.playVerse(
-              surahId: verse.surahId,
-              verseNumber: verse.verseNumber,
-              surahName: verse.surahNameLatin,
-            ),
-            onShowTafsir: widget.onShowTafsir,
+          Builder(
+            builder: (context) {
+              final activePage = _activeMushafPage;
+              final pageVerses = widget.verses.where((v) => v.pageNumber == activePage).toList();
+              final availablePages = widget.verses.map((v) => v.pageNumber).toSet().toList()..sort();
+              final pageIndexInSurah = availablePages.indexOf(activePage);
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (availablePages.length > 1)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B201E) : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isDark ? const Color(0xFF262D2A) : const Color(0xFFE6E1D6)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: (pageIndexInSurah > 0)
+                                ? () => setState(() => _currentMushafPageNumber = availablePages[pageIndexInSurah - 1])
+                                : widget.onPrevSurahPage,
+                            icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                            label: Text(pageIndexInSurah > 0 ? 'Hal ${availablePages[pageIndexInSurah - 1]}' : 'Surah Sebelumnya'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F),
+                            ),
+                          ),
+                          Text(
+                            'Halaman $activePage (${pageIndexInSurah + 1} dari ${availablePages.length})',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFF34D399) : const Color(0xFF165B33),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: (pageIndexInSurah < availablePages.length - 1)
+                                ? () => setState(() => _currentMushafPageNumber = availablePages[pageIndexInSurah + 1])
+                                : widget.onNextSurahPage,
+                            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                            label: Text(pageIndexInSurah < availablePages.length - 1 ? 'Hal ${availablePages[pageIndexInSurah + 1]}' : 'Surah Selanjutnya'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: isDark ? const Color(0xFFECEAE4) : const Color(0xFF1C221F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Mushaf15LinePageWidget(
+                    verses: pageVerses.isNotEmpty ? pageVerses : widget.verses,
+                    fontFamily: _arabicFontFamily,
+                    activeVerseId: state.activeVerseId,
+                    revealedWordPosition: state.revealedWordPosition,
+                    hideVerseMode: widget.hideVerseMode || _blurHifz,
+                    surahArabicName: widget.surah?.nameArabic,
+                    revelationType: widget.surah?.revelationType,
+                    onPrevPage: () {
+                      if (pageIndexInSurah > 0) {
+                        setState(() {
+                          _currentMushafPageNumber = availablePages[pageIndexInSurah - 1];
+                        });
+                      } else {
+                        widget.onPrevSurahPage?.call();
+                      }
+                    },
+                    onNextPage: () {
+                      if (pageIndexInSurah >= 0 && pageIndexInSurah < availablePages.length - 1) {
+                        setState(() {
+                          _currentMushafPageNumber = availablePages[pageIndexInSurah + 1];
+                        });
+                      } else {
+                        widget.onNextSurahPage?.call();
+                      }
+                    },
+                    onSelectVerse: (verse) => widget.voiceController.setActiveVerse(
+                      verse,
+                      revealAllInitially: !(widget.hideVerseMode || _blurHifz),
+                    ),
+                    onPlayVerseAudio: (verse) => widget.murattalAudioService.playVerse(
+                      surahId: verse.surahId,
+                      verseNumber: verse.verseNumber,
+                      surahName: verse.surahNameLatin,
+                    ),
+                    onShowTafsir: widget.onShowTafsir,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 18),
           if (activeVerse != null)
@@ -1793,9 +1905,9 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: textPrimary),
                         dropdownColor: surfaceColor,
                         items: const [
-                          DropdownMenuItem(value: 'kfgqpc_hafs', child: Text('KFGQPC Hafs (GTAF Default)')),
-                          DropdownMenuItem(value: 'me_quran', child: Text('Me Quran (GTAF)')),
-                          DropdownMenuItem(value: 'kitab', child: Text('Kitab (GTAF)')),
+                          DropdownMenuItem(value: 'kfgqpc_hafs', child: Text('KFGQPC Hafs (Standar)')),
+                          DropdownMenuItem(value: 'me_quran', child: Text('Me Quran')),
+                          DropdownMenuItem(value: 'kitab', child: Text('Kitab')),
                         ],
                         onChanged: (val) {
                           if (val != null) setState(() => _arabicFontFamily = val);
