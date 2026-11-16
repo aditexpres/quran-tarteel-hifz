@@ -75,6 +75,10 @@ class QuranWord {
   final String textClean;
   final String translationId;
   final String? transliteration;
+  /// Bentuk kata baku (lemma) dari Quranic Arabic Corpus.
+  final String lemma;
+  /// Akar kata (root) dari Quranic Arabic Corpus.
+  final String root;
 
   const QuranWord({
     required this.id,
@@ -84,6 +88,8 @@ class QuranWord {
     required this.textClean,
     required this.translationId,
     this.transliteration,
+    this.lemma = '',
+    this.root = '',
   });
 
   factory QuranWord.fromMap(Map<String, dynamic> map) {
@@ -95,6 +101,8 @@ class QuranWord {
       textClean: map['text_clean'] as String,
       translationId: map['translation_id'] as String,
       transliteration: map['transliteration'] as String?,
+      lemma: (map['lemma'] as String?) ?? '',
+      root: (map['root'] as String?) ?? '',
     );
   }
 }

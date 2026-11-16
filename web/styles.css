@@ -641,12 +641,20 @@ kbd {
 .mushaf-line {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 8px 12px;
   direction: rtl;
   min-height: 42px;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
   transition: background-color var(--transition-fast);
+}
+
+.mushaf-line:empty,
+.mushaf-line.empty-mushaf-line {
+  min-height: 42px;
+  background-color: transparent !important;
+  pointer-events: none;
 }
 
 .mushaf-line:hover {
@@ -684,7 +692,7 @@ kbd {
 /* Kata-kata Mushaf */
 .mushaf-word {
   font-family: var(--font-arabic);
-  font-size: 1.55rem;
+  font-size: calc(1.55rem * var(--gtaf-ar-scale, 1));
   color: var(--text-arabic);
   cursor: pointer;
   padding: 0 4px;
@@ -692,6 +700,7 @@ kbd {
   transition: all var(--transition-fast);
   line-height: 1.9;
   user-select: none;
+  white-space: nowrap;
 }
 
 .mushaf-word:hover {
@@ -720,12 +729,13 @@ kbd {
 /* Penanda Nomor Ayat (Ayah End Symbol) */
 .ayah-end-marker {
   font-family: var(--font-arabic);
-  font-size: 1.25rem;
+  font-size: calc(1.25rem * var(--gtaf-ar-scale, 1));
   color: var(--accent-gold);
   padding: 0 4px;
   display: inline-flex;
   align-items: center;
   user-select: none;
+  white-space: nowrap;
 }
 
 /* Footer Lembaran Mushaf */
@@ -1349,6 +1359,8 @@ kbd {
   line-height: 2.6;
   color: var(--text-arabic);
   text-align: justify;
+  text-align-last: right;
+  direction: rtl;
 }
 
 .verse-segment {
@@ -1822,8 +1834,18 @@ html.dark .corr-word-chip.status-wrong {
     padding: 14px 12px;
   }
 
+  .mushaf-line {
+    gap: 4px 8px;
+    min-height: 38px;
+  }
+
   .mushaf-word {
-    font-size: 1.35rem;
+    font-size: calc(1.35rem * var(--gtaf-ar-scale, 1));
+    padding: 0 2px;
+  }
+
+  .ayah-end-marker {
+    font-size: calc(1.15rem * var(--gtaf-ar-scale, 1));
     padding: 0 2px;
   }
 

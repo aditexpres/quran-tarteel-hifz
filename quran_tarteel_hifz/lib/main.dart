@@ -2389,6 +2389,12 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                                   verseNumber: v.verseNumber,
                                   surahName: surahLatin,
                                 );
+                                showQuranWordDetailSheet(
+                                  context,
+                                  verse: v,
+                                  word: w,
+                                  surahName: surahLatin,
+                                );
                               }
                             },
                             child: Container(
@@ -3233,35 +3239,44 @@ class _MushafVoiceHifzViewState extends State<MushafVoiceHifzView> {
                 spacing: 8,
                 runSpacing: 8,
                 children: verse.words.map((w) {
-                  return Container(
-                    constraints: const BoxConstraints(minWidth: 64),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: subtleBg,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: borderSubtle),
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () => showQuranWordDetailSheet(
+                      context,
+                      verse: verse,
+                      word: w,
+                      surahName: verse.surahNameLatin,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          w.textUthmani,
-                          style: TextStyle(
-                            fontSize: 20,
-                            height: 1.5,
-                            color: arabicColor,
-                          ),
-                        ),
-                        if (w.translationId.isNotEmpty)
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 64),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: subtleBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderSubtle),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            w.translationId,
-                            textDirection: TextDirection.ltr,
+                            w.textUthmani,
                             style: TextStyle(
-                              fontSize: 11.5,
-                              color: textSecondary,
+                              fontSize: 20,
+                              height: 1.5,
+                              color: arabicColor,
                             ),
                           ),
-                      ],
+                          if (w.translationId.isNotEmpty)
+                            Text(
+                              w.translationId,
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),

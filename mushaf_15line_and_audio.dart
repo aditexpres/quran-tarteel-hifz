@@ -662,8 +662,8 @@ class Mushaf15LineLayoutEngine {
       return resultLines;
     }
 
-    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 5
-        ? 5
+    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 8
+        ? 8
         : (tokenPool.length / remainingTextLines).ceil();
 
     var cursor = 0;

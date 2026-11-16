@@ -485,9 +485,10 @@
       });
     });
 
-    // Bagi menjadi baris proporsional agar genap tepat 15 baris
+    // Bagi menjadi baris proporsional standar Mushaf Madinah (rata-rata 8-10 kata per baris)
     const remainingLineSlots = 15 - DOM.mushafLinesContainer.children.length;
-    const wordsPerLine = Math.max(4, Math.ceil(allWords.length / remainingLineSlots));
+    // Gunakan minimal 8 kata per baris agar kata tersusun padat, rapi, dan tidak melompong
+    const wordsPerLine = Math.max(8, Math.ceil(allWords.length / remainingLineSlots));
 
     let wordIdx = 0;
     for (let lineNo = 0; lineNo < remainingLineSlots; lineNo++) {
@@ -501,7 +502,7 @@
         if (item.isEnd) {
           const marker = document.createElement('span');
           marker.className = 'ayah-end-marker';
-          marker.textContent = ` ۝${toArabicDigits(item.verseNumber)} `;
+          marker.textContent = `۝${toArabicDigits(item.verseNumber)}`;
           lineEl.appendChild(marker);
         } else {
           const wordSpan = document.createElement('span');
@@ -529,7 +530,7 @@
     // Pastikan jika kurang dari 15 baris, isi placeholder baris proporsional
     while (DOM.mushafLinesContainer.children.length < 15) {
       const emptyLine = document.createElement('div');
-      emptyLine.className = 'mushaf-line';
+      emptyLine.className = 'mushaf-line empty-mushaf-line';
       DOM.mushafLinesContainer.appendChild(emptyLine);
     }
 
