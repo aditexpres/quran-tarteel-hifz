@@ -161,6 +161,15 @@
     detailWordsList: document.getElementById('detail-words-list'),
     btnCopyVerse: document.getElementById('btn-copy-verse'),
 
+    // Detail kata bergaya Mushaf GTAF (Lemma & Root)
+    wordDetailModal: document.getElementById('word-detail-modal'),
+    wordDetailRef: document.getElementById('word-detail-ref'),
+    wordDetailArabic: document.getElementById('word-detail-arabic'),
+    wordDetailTranslation: document.getElementById('word-detail-translation'),
+    wordDetailLemma: document.getElementById('word-detail-lemma'),
+    wordDetailRoot: document.getElementById('word-detail-root'),
+    btnCloseWordDetail: document.getElementById('btn-close-word-detail'),
+
     // Voice Hifz elements
     btnToggleMic: document.getElementById('btn-toggle-mic'),
     voiceIndicator: document.getElementById('voice-indicator'),
@@ -506,6 +515,7 @@
             selectActiveVerse(item.verse, item.word.position);
             wordSpan.classList.remove('blurred');
             wordSpan.classList.add('revealed');
+            openWordDetail(item.verse, item.word);
           });
 
           lineEl.appendChild(wordSpan);
@@ -1047,6 +1057,8 @@
           } else {
             selectActiveVerse(v, pos);
             playMurattalAudio(v.surah_id, v.verse_number);
+            const clickedWord = (v.words || []).find(w => (w.position || w.word_position) === pos);
+            if (clickedWord) openWordDetail(v, clickedWord);
           }
         });
       });
@@ -1068,6 +1080,28 @@
     });
   }
 
+  /**
+   * Membuka dialog detail kata bergaya Mushaf GTAF:
+   * referensi Surah Ayat:Kata, lafaz Uthmani, arti perkata,
+   * serta kartu Bentuk Kata Baku (Lemma) dan Asal Kata (Root).
+   */
+  function openWordDetail(verse, word) {
+    if (!DOM.wordDetailModal) return;
+    const pos = word.position || word.word_position || 1;
+    const surahName = verse.surah_name_latin || state.data.surahs.find(s => s.id === verse.surah_id)?.name_latin || `Surah ${verse.surah_id}`;
+    DOM.wordDetailRef.textContent = `${surahName} ${verse.surah_id}:${verse.verse_number}:${pos}`;
+    DOM.wordDetailArabic.textContent = word.text_uthmani || '-';
+    DOM.wordDetailTranslation.textContent = word.translation_id || '-';
+    DOM.wordDetailLemma.textContent = (word.lemma || '').trim() || '-';
+    DOM.wordDetailRoot.textContent = (word.root || '').trim() || '-';
+    if (typeof DOM.wordDetailModal.showModal === 'function') {
+      if (DOM.wordDetailModal.open) DOM.wordDetailModal.close();
+      DOM.wordDetailModal.showModal();
+    } else {
+      DOM.wordDetailModal.setAttribute('open', '');
+    }
+  }
+
   function selectActiveVerse(verse, wordPosition = 0) {
     state.activeVerseIndex = verse.verse_number - 1;
     state.activeWordPosition = wordPosition;
@@ -1087,6 +1121,7 @@
       `;
       chip.addEventListener('click', () => {
         revealWordInMushaf(verse.id, w.position);
+        openWordDetail(verse, w);
       });
       DOM.detailWordsList.appendChild(chip);
     });
@@ -2197,6 +2232,7 @@
         state.correction.selectedWordIdx = idx;
         renderCorrectionWordChips(verse, state.correction.wordResults);
         showCorrectionWordInspector(verse, w, res, idx);
+        openWordDetail(verse, w);
       });
 
       DOM.corrWordsFlow.appendChild(chip);
@@ -3187,6 +3223,14 @@
       state.drill.currentIndex = (state.drill.currentIndex + 1) % state.drill.questions.length;
       renderDrillCard();
     });
+
+    // Modal Detail Kata (Lemma & Root)
+    if (DOM.btnCloseWordDetail && DOM.wordDetailModal) {
+      DOM.btnCloseWordDetail.addEventListener('click', () => DOM.wordDetailModal.close());
+      DOM.wordDetailModal.addEventListener('click', (e) => {
+        if (e.target === DOM.wordDetailModal) DOM.wordDetailModal.close();
+      });
+    }
 
     // Modal Anchor
     DOM.btnCloseModal.addEventListener('click', () => DOM.anchorModal.close());

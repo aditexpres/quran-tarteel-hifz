@@ -2615,3 +2615,56 @@ html.dark .corr-word-chip.status-wrong {
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   DETAIL KATA BERGAYA MUSHAF GTAF (LEMMA & ROOT)
+   ========================================================================== */
+.word-detail-modal {
+  border: 1px solid var(--border-ornament, #C8AA76);
+  border-radius: 18px;
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-primary, #1C221F);
+  padding: 0;
+  max-width: min(460px, 94vw);
+  width: 100%;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+}
+.word-detail-modal::backdrop { background: rgba(10, 20, 15, 0.55); }
+.word-detail-modal .modal-content { padding: 18px 20px 22px; }
+.word-detail-modal .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.word-detail-modal .modal-header h3 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: 0.01em; }
+.word-detail-body { text-align: center; padding-top: 8px; }
+.word-detail-arabic {
+  font-family: 'kfgqpc_hafs', 'Amiri', serif;
+  font-size: 48px;
+  line-height: 1.6;
+  color: var(--text-arabic, #111815);
+  margin: 4px 0 0;
+}
+.word-detail-translation { font-size: 17px; font-weight: 600; color: var(--text-primary, #1C221F); margin-bottom: 20px; }
+.word-detail-cards { display: flex; gap: 12px; }
+.word-detail-card {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px 16px;
+  border-radius: 14px;
+  background: var(--primary-subtle, #EAF4EE);
+  border: 1px solid rgba(22, 91, 51, 0.22);
+}
+.word-detail-card-label { font-size: 11px; font-weight: 700; color: var(--text-secondary, #57655F); }
+.word-detail-card-value {
+  font-family: 'kfgqpc_hafs', 'Amiri', serif;
+  font-size: 34px;
+  line-height: 1.45;
+  color: var(--primary, #165B33);
+  word-break: break-word;
+}
+.word-detail-source { margin: 14px 0 0; font-size: 10.5px; color: var(--text-muted, #829089); }
+html.dark .word-detail-card { background: #242B28; border-color: rgba(52, 211, 153, 0.25); }
+html.dark .word-detail-card-value { color: #34D399; }
+.mushaf-word { cursor: pointer; }
+.gtaf-word-box { cursor: pointer; }

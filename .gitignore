@@ -10,3 +10,6 @@ native_whisper_build/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Sumber korpus morfologi (6 MB) diunduh otomatis oleh build_morphology_map.py
+data/quran-morphology.txt

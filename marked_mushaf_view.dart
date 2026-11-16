@@ -79,6 +79,64 @@ class _MarkedMushafMutasyabihatViewState
     });
   }
 
+  /// Membuat kata-kata ayat yang bisa diklik untuk melihat detail morfologi
+  /// (Bentuk Kata Baku / Lemma dan Asal Kata / Root).
+  List<Widget> _buildTappableWords(
+    Verse verse, {
+  required bool isDark,
+  required bool isMarked,
+}) {
+    final words = verse.words.isNotEmpty
+        ? verse.words
+        : verse.textUthmani
+            .split(RegExp(r'\s+'))
+            .where((s) => s.isNotEmpty)
+            .toList()
+            .asMap()
+            .entries
+            .map(
+              (e) => QuranWord(
+                id: e.key + 1,
+                verseId: verse.id,
+                wordPosition: e.key + 1,
+                textUthmani: e.value,
+                textClean: e.value,
+                translationId: '',
+              ),
+            )
+            .toList();
+
+    return words.map((word) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () {
+          final pair = _findPairForVerse(verse);
+          if (pair != null) _selectMarkedVerse(verse, pair);
+          showQuranWordDetailSheet(
+            context,
+            verse: verse,
+            word: word,
+            surahName: _activeSurah?.nameArabic ?? verse.surahNameLatin,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+          child: Text(
+            word.textUthmani,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'kfgqpc_hafs',
+              fontSize: 23 * _zoomScale,
+              height: 1.9,
+              color: isDark ? const Color(0xFFF3F1EC) : const Color(0xFF141816),
+              fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
   Surah? get _activeSurah {
     if (widget.surahs.isEmpty) return null;
     return widget.surahs.firstWhere(
@@ -435,15 +493,13 @@ class _MarkedMushafMutasyabihatViewState
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Flexible(
-                                        child: Text(
-                                          v.textUthmani,
-                                          style: TextStyle(
-                                            fontSize: 23 * _zoomScale,
-                                            height: 1.9,
-                                            color: isDark
-                                                ? const Color(0xFFF3F1EC)
-                                                : const Color(0xFF141816),
-                                            fontWeight: isMarked ? FontWeight.w600 : FontWeight.w500,
+                                        child: Wrap(
+                                          spacing: 4,
+                                          runSpacing: 2,
+                                          children: _buildTappableWords(
+                                            v,
+                                            isDark: isDark,
+                                            isMarked: isMarked,
                                           ),
                                         ),
                                       ),

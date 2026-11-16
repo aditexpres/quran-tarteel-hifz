@@ -29,7 +29,7 @@ import sqlite3
 import time
 import urllib.error
 import urllib.request
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # ==============================================================================
@@ -108,6 +108,8 @@ CREATE TABLE IF NOT EXISTS words (
     text_clean TEXT NOT NULL,
     translation_id TEXT NOT NULL,
     transliteration TEXT,
+    lemma TEXT NOT NULL DEFAULT '',
+    root TEXT NOT NULL DEFAULT '',
     UNIQUE(verse_id, word_position),
     FOREIGN KEY (verse_id) REFERENCES verses(id)
 );
@@ -181,6 +183,35 @@ def init_databases(master_path: str, user_path: str) -> Tuple[sqlite3.Connection
 
 API_BASE_URL = "https://api.quran.com/api/v4"
 KEMENAG_TRANSLATION_ID = 33  # Terjemahan Bahasa Indonesia Kemenag RI
+
+# Peta morfologi (LEMMA = bentuk kata baku, ROOT = akar kata) dari Quranic Arabic Corpus.
+# Dihasilkan oleh build_morphology_map.py. Bersifat opsional: bila belum ada,
+# kolom lemma/root tetap dibuat tetapi dikosongkan.
+_MORPH_MAP: Optional[Dict[str, Any]] = None
+
+
+def load_morphology_map() -> Dict[str, Any]:
+    global _MORPH_MAP
+    if _MORPH_MAP is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "morphology_map.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                _MORPH_MAP = json.load(f)
+        except (OSError, ValueError):
+            _MORPH_MAP = {"by_verse": {}, "by_word": {}}
+    return _MORPH_MAP
+
+
+def morph_for(surah_id: int, verse_number: int, position: int, text_clean: str) -> Tuple[str, str]:
+    """Mengembalikan (lemma, root) untuk satu kata; fallback ke peta bentuk kata."""
+    morph = load_morphology_map()
+    rec = morph.get("by_verse", {}).get(f"{surah_id}:{verse_number}:{position}")
+    if rec and (rec.get("lemma") or rec.get("root")):
+        return rec.get("lemma", ""), rec.get("root", "")
+    rec = morph.get("by_word", {}).get(text_clean or "")
+    if rec:
+        return rec.get("lemma", ""), rec.get("root", "")
+    return "", ""
 
 
 def fetch_json(url: str, retries: int = 3, backoff: float = 1.5) -> dict:
@@ -339,11 +370,12 @@ def populate_chapters_verses_online(
                         )
                         w_translit = (w.get("transliteration") or {}).get("text") or ""
 
+                        lemma, root = morph_for(surah_id, verse_num, word_pos, w_clean)
                         cur.execute(
                             """
                             INSERT OR REPLACE INTO words
-                            (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration, lemma, root)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                             (
                                 verse_db_id,
@@ -352,6 +384,8 @@ def populate_chapters_verses_online(
                                 w_clean,
                                 w_trans,
                                 w_translit,
+                                lemma,
+                                root,
                             ),
                         )
                         word_pos += 1
@@ -593,13 +627,14 @@ def populate_offline_demo_data(master_conn: sqlite3.Connection, user_conn: sqlit
                     w_clean = remove_diacritics(w_uth)
                     w_trans = w.get("translation_id", "")
                     w_tr = w.get("transliteration", "")
+                    lemma, root = morph_for(sid, vnum, pos, w_clean)
                     cur.execute(
                         """
                         INSERT OR REPLACE INTO words
-                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration, lemma, root)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (verse_id, pos, w_uth, w_clean, w_trans, w_tr),
+                        (verse_id, pos, w_uth, w_clean, w_trans, w_tr, lemma, root),
                     )
             else:
                 tokens_uth = t_uth.split()
@@ -607,13 +642,14 @@ def populate_offline_demo_data(master_conn: sqlite3.Connection, user_conn: sqlit
                 for pos, w_uth in enumerate(tokens_uth, start=1):
                     w_clean = remove_diacritics(w_uth)
                     approx_trans = tokens_trans[min(pos - 1, len(tokens_trans) - 1)] if tokens_trans else ""
+                    lemma, root = morph_for(sid, vnum, pos, w_clean)
                     cur.execute(
                         """
                         INSERT OR REPLACE INTO words
-                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration, lemma, root)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (verse_id, pos, w_uth, w_clean, approx_trans, ""),
+                        (verse_id, pos, w_uth, w_clean, approx_trans, "", lemma, root),
                     )
 
         master_conn.commit()
@@ -752,13 +788,14 @@ def populate_offline_demo_data(master_conn: sqlite3.Connection, user_conn: sqlit
         for pos, w_uth in enumerate(tokens_uth, start=1):
             w_clean = remove_diacritics(w_uth)
             approx_trans = tokens_trans[min(pos - 1, len(tokens_trans) - 1)] if tokens_trans else ""
+            lemma, root = morph_for(sid, vnum, pos, w_clean)
             cur.execute(
                 """
                 INSERT OR REPLACE INTO words
-                (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration, lemma, root)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (verse_id, pos, w_uth, w_clean, approx_trans, ""),
+                (verse_id, pos, w_uth, w_clean, approx_trans, "", lemma, root),
             )
 
     master_conn.commit()

@@ -717,6 +717,138 @@ class Mushaf15LineLayoutEngine {
 //    (ZOOM CTRL+SCROLL MOUSE DI DESKTOP & PINCH 2 JARI DI ANDROID TANPA BLOKIR SCROLL)
 // =============================================================================
 
+// =============================================================================
+// 3B. BOTTOM SHEET DETAIL KATA BERGAYA MUSHAF GTAF
+//     Menampilkan referensi ayat, lafaz Uthmani, arti perkata, serta kartu
+//    LEMMA (Bentuk Kata Baku) dan ROOT (Asal Kata).
+// =============================================================================
+
+void showQuranWordDetailSheet(
+  BuildContext context, {
+  required Verse verse,
+  required QuranWord word,
+  String? surahName,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final green = isDark ? const Color(0xFF34D399) : const Color(0xFF165B33);
+  final cardBg = isDark ? const Color(0xFF242B28) : const Color(0xFFEEF3EE);
+  final sheetBg = isDark ? const Color(0xFF181D1A) : const Color(0xFFFCFAF6);
+  final border = isDark ? const Color(0xFF37423C) : const Color(0xFFD6BD8A);
+  final textColor = isDark ? const Color(0xFFF3F1EC) : const Color(0xFF141816);
+  final muted = isDark ? const Color(0xFFA7B0AC) : const Color(0xFF525E58);
+
+  final surah = (surahName ?? verse.surahNameLatin ?? 'Surah ${verse.surahId}');
+  final reference = '$surah ${verse.surahId}:${verse.verseNumber}:${word.wordPosition}';
+
+  Widget morphCard({required String label, required String value}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: green.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: muted),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value.trim().isEmpty ? '-' : value,
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'kfgqpc_hafs',
+                fontSize: 32,
+                height: 1.4,
+                color: green,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => Container(
+      decoration: BoxDecoration(
+        color: sheetBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        border: Border.all(color: border),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: muted.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  reference,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: textColor),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close_rounded, color: muted, size: 20),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            word.textUthmani,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'kfgqpc_hafs',
+              fontSize: 46,
+              height: 1.5,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            word.translationId.trim().isEmpty ? '-' : word.translationId,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textColor),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              morphCard(label: 'Bentuk Kata Baku (Lemma)', value: word.lemma),
+              const SizedBox(width: 12),
+              morphCard(label: 'Asal Kata (Root)', value: word.root),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Sumber morfologi: Quranic Arabic Corpus',
+            style: TextStyle(fontSize: 10.5, color: muted),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class Mushaf15LinePageWidget extends StatefulWidget {
   final List<Verse> verses;
   final int activeVerseId;
@@ -1179,7 +1311,15 @@ class _Mushaf15LinePageWidgetState extends State<Mushaf15LinePageWidget> {
 
       return InkWell(
         borderRadius: BorderRadius.circular(6),
-        onTap: () => widget.onSelectVerse(token.verse),
+        onTap: () {
+          widget.onSelectVerse(token.verse);
+          showQuranWordDetailSheet(
+            context,
+            verse: token.verse,
+            word: word,
+            surahName: widget.surahArabicName,
+          );
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(

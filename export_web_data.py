@@ -75,7 +75,8 @@ def export_data():
 
     # 3. Ambil Kata
     cur.execute("""
-        SELECT id, verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration
+        SELECT id, verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration,
+               COALESCE(lemma, '') AS lemma, COALESCE(root, '') AS root
         FROM words
         ORDER BY verse_id ASC, word_position ASC
     """)
@@ -88,7 +89,9 @@ def export_data():
                 "text_uthmani": row[3],
                 "text_clean": row[4],
                 "translation_id": row[5],
-                "transliteration": row[6] or ""
+                "transliteration": row[6] or "",
+                "lemma": row[7] or "",
+                "root": row[8] or ""
             })
 
     # 4. Ambil Mutasyabihat

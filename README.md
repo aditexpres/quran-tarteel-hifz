@@ -13,6 +13,23 @@ Dokumen ini juga berfungsi sebagai **Dokumen Handoff & Panduan Lanjutan Proyek**
 | **Koreksi Audio Murattal** | Streaming per ayat [EveryAyah](https://everyayah.com/) (4 Qari) + Auto-Koreksi saat *Trap Jump* | Selesai (`mushaf_15line_and_audio.dart`) | 
 | **Pengujian & CI/CD** | `flutter_test` + `sqflite_common_ffi` & GitHub Actions Multi-OS Release | Selesai (`quran_hifz_test.dart` & `release_build.yml`) | 
 
+## Detail Kata Bergaya Mushaf GTAF (Lemma & Root)
+
+Setiap kata yang diklik pada **Mushaf Madinah 15 Baris**, **Mushaf Bertanda**, daftar kata per kata, maupun versi Web (`web/`) akan menampilkan popup/bottom sheet berisi:
+
+- referensi `Nama Surah : surah:ayat:kata` (contoh: `Al-Baqarah 2:2:2`),
+- lafaz Uthmani dan arti perkata,
+- kartu **Bentuk Kata Baku (Lemma)** dan **Asal Kata (Root)**.
+
+Data morfologi berasal dari *Quranic Arabic Corpus* dan dibundel di `data/morphology_map.json`. Script terkait:
+
+```bash
+python build_morphology_map.py   # unduh korpus & bangun peta morfologi (jika belum ada)
+python patch_morphology.py       # isi kolom lemma/root di DB & bundle web yang sudah ada
+```
+
+Kolom `lemma` dan `root` ditambahkan ke tabel `words` di `quran_master.db` serta ke field kata pada `web/data/quran_data.json` / `quran_data.js`. Generator `build_quran_db.py` dan `build_full_30_juz.py` otomatis mengisi kolom tersebut saat database dibangun ulang.
+
 ## 1. Ringkasan Handoff untuk Rekan Pengembang
 
 Pada tahap perancangan awal ([tautan percakapan pertama](https://share.gemini.google/vZXu2ZC6Y9XM)), proyek berhenti pada rancangan skema tabel SQLite dan skrip purwarupa awal `build_quran_db.py`. Pada sesi pengembangan lanjutan ini, seluruh modul inti telah selesai dibangun dan siap dijalankan:

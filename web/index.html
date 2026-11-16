@@ -799,6 +799,36 @@
     </div>
   </dialog>
 
+  <!-- Dialog Detail Kata bergaya Mushaf GTAF (Lemma & Root) -->
+  <dialog id="word-detail-modal" class="app-modal word-detail-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="word-detail-ref">Al-Baqarah 2:2:2</h3>
+        <button id="btn-close-word-detail" class="btn-close" aria-label="Tutup Detail Kata">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body word-detail-body">
+        <div id="word-detail-arabic" class="word-detail-arabic" dir="rtl">ٱلْكِتَـٰبُ</div>
+        <div id="word-detail-translation" class="word-detail-translation">(is) the Book</div>
+        <div class="word-detail-cards">
+          <div class="word-detail-card">
+            <span class="word-detail-card-label">Bentuk Kata Baku (Lemma)</span>
+            <span id="word-detail-lemma" class="word-detail-card-value" dir="rtl">كِتَاب</span>
+          </div>
+          <div class="word-detail-card">
+            <span class="word-detail-card-label">Asal Kata (Root)</span>
+            <span id="word-detail-root" class="word-detail-card-value" dir="rtl">كتب</span>
+          </div>
+        </div>
+        <p class="word-detail-source">Sumber morfologi: Quranic Arabic Corpus</p>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Audio Element Global -->
   <audio id="global-murattal-audio" preload="none"></audio>
 

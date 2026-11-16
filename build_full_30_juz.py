@@ -25,7 +25,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -61,6 +61,34 @@ def clean_html(text: str) -> str:
     text = FOOTNOTE_RE.sub("", text)
     text = HTML_TAG_RE.sub("", text)
     return html.unescape(text).strip()
+
+
+# Peta morfologi (LEMMA = bentuk kata baku, ROOT = akar kata) hasil
+# build_morphology_map.py. Opsional: kolom tetap dibuat walau peta tidak ada.
+_MORPH_MAP: Optional[Dict[str, Any]] = None
+
+
+def load_morphology_map() -> Dict[str, Any]:
+    global _MORPH_MAP
+    if _MORPH_MAP is None:
+        path = os.path.join(SCRIPT_DIR, "data", "morphology_map.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                _MORPH_MAP = json.load(f)
+        except (OSError, ValueError):
+            _MORPH_MAP = {"by_verse": {}, "by_word": {}}
+    return _MORPH_MAP
+
+
+def morph_for(surah_id: int, verse_number: int, position: int, text_clean: str) -> Tuple[str, str]:
+    morph = load_morphology_map()
+    rec = morph.get("by_verse", {}).get(f"{surah_id}:{verse_number}:{position}")
+    if rec and (rec.get("lemma") or rec.get("root")):
+        return rec.get("lemma", ""), rec.get("root", "")
+    rec = morph.get("by_word", {}).get(text_clean or "")
+    if rec:
+        return rec.get("lemma", ""), rec.get("root", "")
+    return "", ""
 
 
 def fetch_json(url: str, retries: int = 4, backoff: float = 1.0) -> dict:
@@ -115,6 +143,7 @@ def fetch_single_chapter(sid: int, surah_meta: Dict[int, Any]) -> List[dict]:
                 w_clean = remove_diacritics(w_uth)
                 w_pos = w.get("position", len(words) + 1)
                 w_trans = w.get("translation", {}).get("text", "")
+                lemma, root = morph_for(sid, vnum, w_pos, w_clean)
                 words.append({
                     "id": len(words) + 1,
                     "position": w_pos,
@@ -122,6 +151,8 @@ def fetch_single_chapter(sid: int, surah_meta: Dict[int, Any]) -> List[dict]:
                     "text_clean": w_clean,
                     "translation_id": clean_html(w_trans),
                     "transliteration": w.get("transliteration", {}).get("text", ""),
+                    "lemma": lemma,
+                    "root": root,
                 })
 
             juz_num = v.get("juz_number") or 1
@@ -480,6 +511,8 @@ def build_full_30_juz():
                 text_clean TEXT NOT NULL,
                 translation_id TEXT NOT NULL,
                 transliteration TEXT,
+                lemma TEXT NOT NULL DEFAULT '',
+                root TEXT NOT NULL DEFAULT '',
                 UNIQUE(verse_id, word_position),
                 FOREIGN KEY (verse_id) REFERENCES verses(id)
             );
@@ -544,6 +577,9 @@ def build_full_30_juz():
                 ),
             )
             for w in v.get("words", []):
+                lemma, root = morph_for(
+                    v["surah_id"], v["verse_number"], w["position"], w["text_clean"]
+                )
                 word_rows.append((
                     v["id"],
                     w["position"],
@@ -551,13 +587,15 @@ def build_full_30_juz():
                     w["text_clean"],
                     w["translation_id"],
                     w.get("transliteration", ""),
+                    w.get("lemma") or lemma,
+                    w.get("root") or root,
                 ))
 
         cur.executemany(
             """
             INSERT INTO words
-            (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (verse_id, word_position, text_uthmani, text_clean, translation_id, transliteration, lemma, root)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             word_rows,
         )
