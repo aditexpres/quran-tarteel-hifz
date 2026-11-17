@@ -583,110 +583,148 @@ class MushafLineModel {
   bool get isSurahHeader => headerSurahId != null;
 }
 
+class _SurahPageSection {
+  final int surahId;
+  final List<Verse> verses;
+  bool hasVerseOne = false;
+  int headerLines = 0;
+  final List<MushafLineToken> tokens = [];
+
+  _SurahPageSection({required this.surahId, required this.verses});
+}
+
 class Mushaf15LineLayoutEngine {
   static const int standardLinesPerPage = 15;
 
   /// Membagi daftar ayat pada satu halaman Mushaf menjadi tepat 15 baris proporsional
-  /// standar Mushaf Madinah, lengkap dengan bingkai nama Surah dan Basmalah pada awal Surah.
+  /// standar Mushaf Madinah, lengkap dengan bingkai nama Surah dan Basmalah pada awal Surah
+  /// yang tepat berada langsung di atas ayat masing-masing (mendukung halaman multi-surah).
   static List<MushafLineModel> build15LinesForPage(List<Verse> pageVerses) {
     if (pageVerses.isEmpty) return const [];
 
-    final rawSegments = <MushafLineModel>[];
-    final tokenPool = <MushafLineToken>[];
+    // Kelompokkan ayat-ayat halaman ini per surah (mendukung multi-surah per halaman, misal hal 604)
+    final sections = <_SurahPageSection>[];
+    int? currentSurahId;
+    List<Verse> currentVerses = [];
 
-    int? lastSurahId;
     for (final verse in pageVerses) {
-      if (verse.verseNumber == 1 && verse.surahId != lastSurahId) {
-        lastSurahId = verse.surahId;
-        rawSegments.add(
+      if (verse.surahId != currentSurahId) {
+        if (currentVerses.isNotEmpty) {
+          sections.add(_SurahPageSection(surahId: currentSurahId!, verses: currentVerses));
+        }
+        currentSurahId = verse.surahId;
+        currentVerses = [verse];
+      } else {
+        currentVerses.add(verse);
+      }
+    }
+    if (currentVerses.isNotEmpty) {
+      sections.add(_SurahPageSection(surahId: currentSurahId!, verses: currentVerses));
+    }
+
+    for (final sec in sections) {
+      final hasVerseOne = sec.verses.any((v) => v.verseNumber == 1);
+      sec.hasVerseOne = hasVerseOne;
+      if (hasVerseOne) {
+        sec.headerLines++;
+        // Basmalah tidak dicantumkan terpisah pada Surah 1 (karena ayat 1 adalah Basmalah) dan Surah 9
+        if (sec.surahId != 1 && sec.surahId != 9) {
+          sec.headerLines++;
+        }
+      }
+
+      for (final v in sec.verses) {
+        final words = v.words.isNotEmpty
+            ? v.words
+            : v.textUthmani
+                .split(' ')
+                .where((w) => w.isNotEmpty)
+                .toList()
+                .asMap()
+                .entries
+                .map(
+                  (e) => QuranWord(
+                    id: e.key,
+                    verseId: v.id,
+                    wordPosition: e.key + 1,
+                    textUthmani: e.value,
+                    textClean: e.value,
+                    translationId: '',
+                  ),
+                )
+                .toList();
+
+        for (final w in words) {
+          sec.tokens.add(MushafLineToken(verse: v, word: w));
+        }
+        sec.tokens.add(MushafLineToken(verse: v, isVerseEndMarker: true));
+      }
+    }
+
+    final resultLines = <MushafLineModel>[];
+    var currentLineNum = 1;
+
+    for (var idx = 0; idx < sections.length; idx++) {
+      final sec = sections[idx];
+      // 1. Header Surah & Basmalah jika ayat 1 berada di bagian ini
+      if (sec.hasVerseOne) {
+        final firstV = sec.verses.firstWhere((v) => v.verseNumber == 1);
+        resultLines.add(
           MushafLineModel(
-            lineNumber: 0,
-            headerSurahId: verse.surahId,
-            headerSurahName: verse.surahNameLatin ?? 'Surah ${verse.surahId}',
+            lineNumber: currentLineNum++,
+            headerSurahId: sec.surahId,
+            headerSurahName: firstV.surahNameLatin ?? 'Surah ${sec.surahId}',
           ),
         );
-        if (verse.surahId != 1 && verse.surahId != 9) {
-          rawSegments.add(
-            const MushafLineModel(
-              lineNumber: 0,
+        if (sec.surahId != 1 && sec.surahId != 9) {
+          resultLines.add(
+            MushafLineModel(
+              lineNumber: currentLineNum++,
               isBismillahLine: true,
             ),
           );
         }
       }
 
-      final words = verse.words.isNotEmpty
-          ? verse.words
-          : verse.textUthmani
-              .split(' ')
-              .where((w) => w.isNotEmpty)
-              .toList()
-              .asMap()
-              .entries
-              .map(
-                (e) => QuranWord(
-                  id: e.key,
-                  verseId: verse.id,
-                  wordPosition: e.key + 1,
-                  textUthmani: e.value,
-                  textClean: e.value,
-                  translationId: '',
-                ),
-              )
-              .toList();
+      if (sec.tokens.isEmpty) continue;
 
-      for (final w in words) {
-        tokenPool.add(MushafLineToken(verse: verse, word: w));
+      final futureHeaders = sections
+          .sublist(idx + 1)
+          .fold<int>(0, (sum, s) => sum + s.headerLines);
+      final availLines = (standardLinesPerPage - resultLines.length - futureHeaders)
+          .clamp(1, standardLinesPerPage);
+
+      var allocatedLines = availLines;
+      if (idx < sections.length - 1) {
+        final tokensRem = sections
+            .sublist(idx)
+            .fold<int>(0, (sum, s) => sum + s.tokens.length);
+        final minForRest = sections.length - 1 - idx;
+        final target =
+            (availLines * (sec.tokens.length / (tokensRem > 0 ? tokensRem : 1))).round();
+        final maxForCurrent =
+            (availLines - minForRest) < 1 ? 1 : (availLines - minForRest);
+        allocatedLines = target.clamp(1, maxForCurrent);
       }
-      tokenPool.add(MushafLineToken(verse: verse, isVerseEndMarker: true));
-    }
 
-    final remainingTextLines =
-        (standardLinesPerPage - rawSegments.length).clamp(1, standardLinesPerPage);
+      final wordsPerLine = (sec.tokens.length / allocatedLines).ceil() < 8
+          ? 8
+          : (sec.tokens.length / allocatedLines).ceil();
 
-    final resultLines = <MushafLineModel>[];
-    var currentLineNum = 1;
+      var cursor = 0;
+      for (var i = 0; i < allocatedLines; i++) {
+        if (cursor >= sec.tokens.length) break;
+        final endIdx = (cursor + wordsPerLine).clamp(0, sec.tokens.length);
+        final slice = sec.tokens.sublist(cursor, endIdx);
+        cursor = endIdx;
 
-    for (final headerSeg in rawSegments) {
-      resultLines.add(
-        MushafLineModel(
-          lineNumber: currentLineNum++,
-          headerSurahId: headerSeg.headerSurahId,
-          headerSurahName: headerSeg.headerSurahName,
-          isBismillahLine: headerSeg.isBismillahLine,
-        ),
-      );
-    }
-
-    if (tokenPool.isEmpty) {
-      return resultLines;
-    }
-
-    final wordsPerLine = (tokenPool.length / remainingTextLines).ceil() < 8
-        ? 8
-        : (tokenPool.length / remainingTextLines).ceil();
-
-    var cursor = 0;
-    for (var i = 0; i < remainingTextLines; i++) {
-      if (cursor >= tokenPool.length) {
         resultLines.add(
           MushafLineModel(
             lineNumber: currentLineNum++,
-            tokens: const [],
+            tokens: slice,
           ),
         );
-        continue;
       }
-      final endIdx = (cursor + wordsPerLine).clamp(0, tokenPool.length);
-      final slice = tokenPool.sublist(cursor, endIdx);
-      cursor = endIdx;
-
-      resultLines.add(
-        MushafLineModel(
-          lineNumber: currentLineNum++,
-          tokens: slice,
-        ),
-      );
     }
 
     while (resultLines.length < standardLinesPerPage) {
@@ -698,7 +736,7 @@ class Mushaf15LineLayoutEngine {
       );
     }
 
-    return resultLines;
+    return resultLines.take(standardLinesPerPage).toList();
   }
 
   /// Mengonversi angka integer ke angka Arab Timur (٠١٢٣٤٥٦٧٨٩) untuk medali akhir ayat.

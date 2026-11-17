@@ -450,82 +450,126 @@
     // Render 15 Baris Mushaf
     DOM.mushafLinesContainer.innerHTML = '';
 
-    // Hanya tampilkan Header Surah & Basmalah jika ayat 1 berada di halaman ini
-    const hasVerseOne = pageVerses.some(v => v.verse_number === 1);
-    if (hasVerseOne) {
-      // Baris 1: Header Surah
-      const headerLine = document.createElement('div');
-      headerLine.className = 'mushaf-line surah-header-line';
-      headerLine.innerHTML = `<span class="surah-header-banner">سُورَةُ ${surah.name_arabic} • ${surah.revelation_type === 'madaniyah' ? 'مَدَنِيَّة' : 'مَكِّيَّة'}</span>`;
-      DOM.mushafLinesContainer.appendChild(headerLine);
-
-      // Baris 2: Basmalah (jika bukan At-Taubah)
-      if (surah.id !== 9) {
-        const bismillahLine = document.createElement('div');
-        bismillahLine.className = 'mushaf-line bismillah-line';
-        bismillahLine.textContent = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
-        DOM.mushafLinesContainer.appendChild(bismillahLine);
+    // Kelompokkan ayat-ayat halaman ini per Surah (mendukung halaman multi-surah, misal Juz 30 / hal 604)
+    const surahSections = [];
+    let currentSurahId = null;
+    let currentSectionVerses = [];
+    pageVerses.forEach(v => {
+      if (v.surah_id !== currentSurahId) {
+        if (currentSectionVerses.length > 0) {
+          surahSections.push({ surahId: currentSurahId, verses: currentSectionVerses });
+        }
+        currentSurahId = v.surah_id;
+        currentSectionVerses = [v];
+      } else {
+        currentSectionVerses.push(v);
       }
+    });
+    if (currentSectionVerses.length > 0) {
+      surahSections.push({ surahId: currentSurahId, verses: currentSectionVerses });
     }
 
-    // Bangun token kata per ayat dari pageVerses
-    const allWords = [];
-    pageVerses.forEach(v => {
-      (v.words || []).forEach(w => {
-        allWords.push({
-          verse: v,
-          word: w
+    // Hitung total baris header & basmalah yang dibutuhkan di halaman ini
+    let totalHeaderLines = 0;
+    const sectionData = surahSections.map(sec => {
+      const sObj = state.data.surahs.find(s => s.id === sec.surahId) || surah;
+      const hasVerseOne = sec.verses.some(v => v.verse_number === 1);
+      let headerLines = 0;
+      if (hasVerseOne) {
+        headerLines += 1; // Baris banner nama Surah
+        // Basmalah tidak dicantumkan terpisah untuk Surah 1 (karena ayat 1 adalah Basmalah) dan Surah 9
+        if (sec.surahId !== 1 && sec.surahId !== 9) {
+          headerLines += 1;
+        }
+      }
+      totalHeaderLines += headerLines;
+
+      // Bangun token kata per ayat untuk bagian surah ini
+      const tokens = [];
+      sec.verses.forEach(v => {
+        (v.words || []).forEach(w => {
+          tokens.push({ verse: v, word: w });
         });
+        tokens.push({ verse: v, isEnd: true, verseNumber: v.verse_number });
       });
-      // Penanda akhir ayat
-      allWords.push({
-        verse: v,
-        isEnd: true,
-        verseNumber: v.verse_number
-      });
+
+      return {
+        surah: sObj,
+        verses: sec.verses,
+        hasVerseOne,
+        headerLines,
+        tokens
+      };
     });
 
-    // Bagi menjadi baris proporsional standar Mushaf Madinah (rata-rata 8-10 kata per baris)
-    const remainingLineSlots = 15 - DOM.mushafLinesContainer.children.length;
-    // Gunakan minimal 8 kata per baris agar kata tersusun padat, rapi, dan tidak melompong
-    const wordsPerLine = Math.max(8, Math.ceil(allWords.length / remainingLineSlots));
+    // Render baris-baris mushaf per bagian surah dengan header tepat di atas ayatnya
+    sectionData.forEach((sec, idx) => {
+      // 1. Header Surah jika ayat 1 berada di bagian ini
+      if (sec.hasVerseOne) {
+        const headerLine = document.createElement('div');
+        headerLine.className = 'mushaf-line surah-header-line';
+        headerLine.innerHTML = `<span class="surah-header-banner">سُورَةُ ${sec.surah.name_arabic} • ${sec.surah.revelation_type === 'madaniyah' ? 'مَدَنِيَّة' : 'مَكِّيَّة'}</span>`;
+        DOM.mushafLinesContainer.appendChild(headerLine);
 
-    let wordIdx = 0;
-    for (let lineNo = 0; lineNo < remainingLineSlots; lineNo++) {
-      const lineEl = document.createElement('div');
-      lineEl.className = 'mushaf-line';
-
-      const slice = allWords.slice(wordIdx, wordIdx + wordsPerLine);
-      wordIdx += wordsPerLine;
-
-      slice.forEach(item => {
-        if (item.isEnd) {
-          const marker = document.createElement('span');
-          marker.className = 'ayah-end-marker';
-          marker.textContent = `۝${toArabicDigits(item.verseNumber)}`;
-          lineEl.appendChild(marker);
-        } else {
-          const wordSpan = document.createElement('span');
-          wordSpan.className = 'mushaf-word';
-          if (state.hideMode) wordSpan.classList.add('blurred');
-          wordSpan.textContent = item.word.text_uthmani;
-          wordSpan.dataset.verseId = item.verse.id;
-          wordSpan.dataset.wordPos = item.word.position;
-
-          wordSpan.addEventListener('click', () => {
-            selectActiveVerse(item.verse, item.word.position);
-            wordSpan.classList.remove('blurred');
-            wordSpan.classList.add('revealed');
-            openWordDetail(item.verse, item.word);
-          });
-
-          lineEl.appendChild(wordSpan);
+        // 2. Basmalah (kecuali Surah 1 Al-Fatihah dan Surah 9 At-Taubah)
+        if (sec.surah.id !== 1 && sec.surah.id !== 9) {
+          const bismillahLine = document.createElement('div');
+          bismillahLine.className = 'mushaf-line bismillah-line';
+          bismillahLine.textContent = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+          DOM.mushafLinesContainer.appendChild(bismillahLine);
         }
-      });
+      }
 
-      DOM.mushafLinesContainer.appendChild(lineEl);
-      if (wordIdx >= allWords.length) break;
-    }
+      // 3. Baris kata-kata ayat (alokasi dinamis tanpa jeda baris kosong antar-surah)
+      if (!sec.tokens.length) return;
+      const futureHeaders = sectionData.slice(idx + 1).reduce((sum, s) => sum + s.headerLines, 0);
+      const availLines = Math.max(1, 15 - DOM.mushafLinesContainer.children.length - futureHeaders);
+      let allocatedLines = availLines;
+      if (idx < sectionData.length - 1) {
+        const tokensRem = sectionData.slice(idx).reduce((sum, s) => sum + s.tokens.length, 0);
+        const minForRest = sectionData.length - 1 - idx;
+        const target = Math.round(availLines * (sec.tokens.length / Math.max(1, tokensRem)));
+        allocatedLines = Math.max(1, Math.min(Math.max(1, availLines - minForRest), target));
+      }
+
+      const wordsPerLine = Math.max(8, Math.ceil(sec.tokens.length / allocatedLines));
+      let wordIdx = 0;
+      for (let l = 0; l < allocatedLines; l++) {
+        if (wordIdx >= sec.tokens.length) break;
+        const lineEl = document.createElement('div');
+        lineEl.className = 'mushaf-line';
+
+        const slice = sec.tokens.slice(wordIdx, wordIdx + wordsPerLine);
+        wordIdx += wordsPerLine;
+
+        slice.forEach(item => {
+          if (item.isEnd) {
+            const marker = document.createElement('span');
+            marker.className = 'ayah-end-marker';
+            marker.textContent = `۝${toArabicDigits(item.verseNumber)}`;
+            lineEl.appendChild(marker);
+          } else {
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'mushaf-word';
+            if (state.hideMode) wordSpan.classList.add('blurred');
+            wordSpan.textContent = item.word.text_uthmani;
+            wordSpan.dataset.verseId = item.verse.id;
+            wordSpan.dataset.wordPos = item.word.position;
+
+            wordSpan.addEventListener('click', () => {
+              selectActiveVerse(item.verse, item.word.position);
+              wordSpan.classList.remove('blurred');
+              wordSpan.classList.add('revealed');
+              openWordDetail(item.verse, item.word);
+            });
+
+            lineEl.appendChild(wordSpan);
+          }
+        });
+
+        DOM.mushafLinesContainer.appendChild(lineEl);
+      }
+    });
 
     // Pastikan jika kurang dari 15 baris, isi placeholder baris proporsional
     while (DOM.mushafLinesContainer.children.length < 15) {
@@ -1448,8 +1492,10 @@
         const sId = parseInt(state.radarSurahId, 10);
         const verseSet = new Set();
         state.data.mutasyabihat.forEach(p => {
-          if (p.surah_id_1 === sId) verseSet.add(p.verse_number_1);
-          if (p.surah_id_2 === sId) verseSet.add(p.verse_number_2);
+          const v1 = p.verse_num_1 ?? p.verse_number_1;
+          const v2 = p.verse_num_2 ?? p.verse_number_2;
+          if (p.surah_id_1 === sId && v1 != null) verseSet.add(v1);
+          if (p.surah_id_2 === sId && v2 != null) verseSet.add(v2);
         });
         const sortedVerses = Array.from(verseSet).sort((a, b) => a - b);
         sortedVerses.forEach(v => {
@@ -1473,10 +1519,12 @@
       pairs = pairs.filter(p => p.surah_id_1 === sId || p.surah_id_2 === sId);
       if (state.radarVerseNumber) {
         const vNum = parseInt(state.radarVerseNumber, 10);
-        pairs = pairs.filter(p => 
-          (p.surah_id_1 === sId && p.verse_number_1 === vNum) ||
-          (p.surah_id_2 === sId && p.verse_number_2 === vNum)
-        );
+        pairs = pairs.filter(p => {
+          const v1 = p.verse_num_1 ?? p.verse_number_1;
+          const v2 = p.verse_num_2 ?? p.verse_number_2;
+          return (p.surah_id_1 === sId && v1 === vNum) ||
+                 (p.surah_id_2 === sId && v2 === vNum);
+        });
       }
     }
 
@@ -1844,6 +1892,13 @@
               selectActiveVerse(nextV, 0);
               setGtafLastRead(nextV);
               playMurattalAudio(surahId, verseNumber + 1);
+              return;
+            }
+          } else {
+            const nextSurah = state.data.surahs.find(s => s.id === surahId + 1);
+            if (nextSurah) {
+              jumpToSurahAndVerse(nextSurah.id, 1, true);
+              playMurattalAudio(nextSurah.id, 1);
               return;
             }
           }
@@ -2233,7 +2288,6 @@
         state.correction.selectedWordIdx = idx;
         renderCorrectionWordChips(verse, state.correction.wordResults);
         showCorrectionWordInspector(verse, w, res, idx);
-        openWordDetail(verse, w);
       });
 
       DOM.corrWordsFlow.appendChild(chip);
@@ -2425,6 +2479,11 @@
       ? evalRes.note
       : 'Klik tombol Rekam Suara atau Simulasi di atas untuk mengevaluasi ketepatan pelafalan kata ini.';
 
+    const morphDetails = [];
+    if (wordObj.lemma) morphDetails.push(`Lemma: <strong>${wordObj.lemma}</strong>`);
+    if (wordObj.root) morphDetails.push(`Root: <strong>${wordObj.root}</strong>`);
+    const morphHtml = morphDetails.length ? ` • ${morphDetails.join(' • ')}` : '';
+
     DOM.corrInspectorBody.innerHTML = `
       <div class="inspector-compare-grid">
         <div class="inspector-box">
@@ -2433,7 +2492,7 @@
             <span>Kata #${idx + 1}</span>
           </div>
           <div class="inspector-arabic">${wordObj.text_uthmani}</div>
-          <div class="inspector-next">Transliterasi: <strong>${wordObj.transliteration || '-'}</strong> • Arti: "${wordObj.translation_id || '-'}"</div>
+          <div class="inspector-next">Transliterasi: <strong>${wordObj.transliteration || '-'}</strong> • Arti: "${wordObj.translation_id || '-'}"${morphHtml}</div>
         </div>
         <div class="inspector-box">
           <div class="inspector-box-header">
@@ -2444,8 +2503,9 @@
           <div class="inspector-next">${noteText}</div>
         </div>
       </div>
-      <div class="alert-action-row" style="margin-top:8px;">
+      <div class="alert-action-row" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
         <button type="button" class="btn btn-primary btn-sm" id="btn-inspector-play-qari">Dengarkan Contoh Lafal Qari (QS. ${verse.surah_name_latin}:${verse.verse_number})</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-inspector-modal-trigger">Detail Morfologi Lengkap 🔍</button>
       </div>
     `;
 
@@ -2453,6 +2513,12 @@
     if (btnPlay) {
       btnPlay.addEventListener('click', () => {
         playMurattalAudio(verse.surah_id, verse.verse_number);
+      });
+    }
+    const btnModal = document.getElementById('btn-inspector-modal-trigger');
+    if (btnModal) {
+      btnModal.addEventListener('click', () => {
+        openWordDetail(verse, wordObj);
       });
     }
   }
